@@ -19,20 +19,6 @@ options — and it's designed to grow beyond battery monitoring over time.
 > refers to it being a companion app for your keyboard.
 > The name is configurable in `keeb_assistant/__init__.py` (`APP_NAME`, `APP_ID`).
 
-## Download (Windows)
-
-Grab the latest prebuilt `KeyboardCompanion.exe` from the
-[**Releases**](https://github.com/OutersSoftware/keyboard-companion/releases)
-page, then just double-click it — no Python needed. The tray icon appears;
-right-click it for the menu (or double-click the icon to open Settings).
-
-> The battery reading over **cable / 2.4 GHz dongle** requires the modified QMK
-> firmware (see [Requirements](#requirements)). The **Bluetooth** reading works
-> out of the box, since it mirrors what Windows already reports.
-
-Developers can instead run from source or rebuild the exe — see
-[Run from source](#run-from-source) and [Build a single .exe](#build-a-single-exe).
-
 ## Tray icon
 
 ![Tray icon states](assets/preview.png)
@@ -61,6 +47,20 @@ full-size render, the bottom row simulates the size in the Windows tray.
   Without that firmware there is no HID battery data over cable/dongle; the
   Bluetooth reading still works, since it mirrors what Windows already exposes.
 - Python 3.9+ (only to run from source or to build the exe).
+
+## Download (Windows)
+
+Grab the latest version from the
+[**Releases**](https://github.com/OutersSoftware/keyboard-companion/releases)
+page, then just double-click it. The tray icon appears;
+right-click it for the menu (or double-click the icon to open Settings).
+
+> The battery reading over **cable / 2.4 GHz dongle** requires the modified QMK
+> firmware (see [Requirements](#requirements)). The **Bluetooth** reading works
+> out of the box, since it mirrors what Windows already reports.
+
+Devs can run from source or rebuild the exe — see
+[Run from source](#run-from-source) and [Build a single .exe](#build-a-single-exe).
 
 ## Run from source
 ```powershell
