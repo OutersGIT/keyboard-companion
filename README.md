@@ -15,7 +15,9 @@ channel, command `0xA4`). It works over **all three connections**:
 
 ![Tray icon states](assets/preview.png)
 
-<img width="229" height="280" alt="image" src="https://github.com/user-attachments/assets/7ecec85c-1de5-4be3-a1b8-1fb82e3f2deb" />
+
+<img width="315" height="281" alt="image" src="https://github.com/user-attachments/assets/42a50bf3-5bf6-4ff0-925b-77fb3f2078a0" />
+
 
 The icon shows a battery glyph with the percentage below; the top row is the
 full-size render, the bottom row simulates the size in the Windows tray.
