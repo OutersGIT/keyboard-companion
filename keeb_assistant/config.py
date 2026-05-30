@@ -15,6 +15,15 @@ DEFAULTS = {
     "low_battery_threshold": 15,
     "notify_low_battery": True,
     "pull_interval_sec": 5.0,
+    # Opt-in diagnostics: append battery samples to a CSV in %APPDATA%. Off by
+    # default; used to gather real voltage/charging data for the charging-%
+    # correction. Does not affect anything displayed.
+    "battery_logging": False,
+    # While charging, compensate the inflated terminal voltage so the shown %
+    # tracks the true resting state of charge. offset_mv is the voltage we
+    # subtract before mapping to % (empirical; refine from logged CSV data).
+    "charge_correction": True,
+    "charge_offset_mv": 120,
     # autostart is the source of truth in the registry; this is just a mirror
     # used to render the menu checkbox without a registry read on every paint.
     "autostart": False,

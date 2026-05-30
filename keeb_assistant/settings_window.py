@@ -10,7 +10,7 @@ from __future__ import annotations
 import tkinter as tk
 from tkinter import ttk
 
-from . import APP_NAME, __version__, autostart, i18n
+from . import APP_NAME, __version__, autostart, battery_log, i18n
 
 
 def open_settings(app) -> None:
@@ -35,6 +35,8 @@ def open_settings(app) -> None:
     threshold_var = tk.IntVar(value=int(cfg["low_battery_threshold"]))
     alpha_var = tk.DoubleVar(value=float(cfg["smoothing_alpha"]))
     autostart_var = tk.BooleanVar(value=autostart.is_enabled())
+    correction_var = tk.BooleanVar(value=bool(cfg.get("charge_correction", True)))
+    logging_var = tk.BooleanVar(value=bool(cfg.get("battery_logging")))
 
     # Keep references so we can re-translate labels live on language change.
     lbl_language = ttk.Label(frame)
@@ -42,6 +44,9 @@ def open_settings(app) -> None:
     chk_notify = ttk.Checkbutton(frame, variable=notify_var)
     lbl_smoothing = ttk.Label(frame)
     chk_autostart = ttk.Checkbutton(frame, variable=autostart_var)
+    chk_correction = ttk.Checkbutton(frame, variable=correction_var)
+    chk_logging = ttk.Checkbutton(frame, variable=logging_var)
+    btn_open_log = ttk.Button(frame, command=battery_log.open_location)
     lbl_note = ttk.Label(frame, foreground="#666", wraplength=320)
     lbl_version = ttk.Label(frame, foreground="#888", text=f"{APP_NAME}  v{__version__}")
     btn_save = ttk.Button(frame)
@@ -54,6 +59,9 @@ def open_settings(app) -> None:
         chk_notify.config(text=i18n.t("settings_notify"))
         lbl_smoothing.config(text=i18n.t("settings_smoothing"))
         chk_autostart.config(text=i18n.t("settings_autostart"))
+        chk_correction.config(text=i18n.t("settings_charge_correction"))
+        chk_logging.config(text=i18n.t("settings_logging"))
+        btn_open_log.config(text=i18n.t("settings_open_log"))
         lbl_note.config(text=i18n.t("settings_note"))
         btn_save.config(text=i18n.t("settings_save"))
         btn_close.config(text=i18n.t("settings_close"))
@@ -82,6 +90,8 @@ def open_settings(app) -> None:
             pass
         cfg["smoothing_alpha"] = round(float(alpha_var.get()), 2)
         autostart.set_enabled(bool(autostart_var.get()))
+        cfg["charge_correction"] = bool(correction_var.get())
+        cfg["battery_logging"] = bool(logging_var.get())
         app.apply_settings()
         root.destroy()
 
@@ -97,10 +107,13 @@ def open_settings(app) -> None:
     lbl_smoothing.grid(row=3, column=0, sticky="w", pady=4)
     scale.grid(row=3, column=1, sticky="e", pady=4)
     chk_autostart.grid(row=4, column=0, columnspan=2, sticky="w", pady=4)
-    lbl_note.grid(row=5, column=0, columnspan=2, sticky="w", pady=(10, 8))
-    btn_save.grid(row=6, column=0, sticky="w", pady=(4, 0))
-    btn_close.grid(row=6, column=1, sticky="e", pady=(4, 0))
-    lbl_version.grid(row=7, column=0, columnspan=2, sticky="w", pady=(12, 0))
+    chk_correction.grid(row=5, column=0, columnspan=2, sticky="w", pady=4)
+    chk_logging.grid(row=6, column=0, sticky="w", pady=4)
+    btn_open_log.grid(row=6, column=1, sticky="e", pady=4)
+    lbl_note.grid(row=7, column=0, columnspan=2, sticky="w", pady=(10, 8))
+    btn_save.grid(row=8, column=0, sticky="w", pady=(4, 0))
+    btn_close.grid(row=8, column=1, sticky="e", pady=(4, 0))
+    lbl_version.grid(row=9, column=0, columnspan=2, sticky="w", pady=(12, 0))
 
     retranslate()
 

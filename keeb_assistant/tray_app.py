@@ -10,7 +10,7 @@ import webbrowser
 import pystray
 from pystray import Menu, MenuItem
 
-from . import APP_ID, APP_NAME, autostart, ble_reader, i18n
+from . import APP_ID, APP_NAME, autostart, battery_log, battery_model, ble_reader, i18n
 from .config import Config
 from .hid_reader import BatteryReader, BatteryReading
 from .icon import make_icon
@@ -146,13 +146,32 @@ class TrayApp:
         # the smoother fresh so we don't blend two different estimates.
         if prev is not None and prev.source != reading.source:
             self.smoother.reset()
-        displayed = self.smoother.update(reading.percentage, charging=reading.is_charging)
+        # Charging compensation is applied to the value we *display* only; the
+        # raw voltage/percentage are still logged below as ground truth.
+        corrected = battery_model.corrected_percentage(
+            reading.voltage_mv,
+            reading.percentage,
+            reading.charging_code,
+            enabled=bool(self.config.get("charge_correction", True)),
+            offset_mv=int(self.config.get("charge_offset_mv", battery_model.DEFAULT_CHARGE_OFFSET_MV)),
+        )
+        displayed = self.smoother.update(corrected, charging=reading.is_charging)
         with self._lock:
             self._latest = reading
             self._displayed_pct = displayed
             self._connected = True
             if reading.source == "hid":
                 self._last_hid_ts = reading.timestamp
+        if self.config.get("battery_logging"):
+            battery_log.append(
+                source=reading.source,
+                transport=reading.transport_name,
+                charging=reading.charging_code,
+                voltage_mv=reading.voltage_mv,
+                raw_pct=reading.percentage,
+                displayed_pct=displayed,
+                ema=self.smoother.ema,
+            )
         self._check_low_battery(displayed, reading.is_charging)
         self._refresh_ui()
 

@@ -32,10 +32,18 @@ full-size render, the bottom row simulates the size in the Windows tray.
 - Tray icon with the **battery percentage** and color by level (green/amber/red).
 - Tooltip + menu with **%, voltage, charging state, link type**.
 - **Smoothing** (EMA + hysteresis) so the value does not flicker.
+- **Charging-% correction**: while charging, the battery voltage is inflated, so
+  the keyboard's own percentage overestimates the true charge. The app
+  compensates it host-side so the shown value tracks the resting level
+  (toggleable).
 - **Low-battery notification** (configurable threshold).
+- **Optional battery logging** (diagnostics): opt-in CSV in `%APPDATA%` to gather
+  real voltage/charging data (used to refine the charging-% correction). Off by
+  default; never affects what is displayed.
 - **Multi-language UI**: English / Italian / 中文, switchable at runtime and easy
   to extend (see `i18n.py`).
-- **Settings window** (language, threshold, notifications, smoothing, autostart).
+- **Settings window** (language, threshold, notifications, smoothing, charging
+  correction, logging, autostart).
 - **Open Launcher** menu entry that opens the official Keychron web launcher in
   your browser.
 - **Optional** start-with-Windows, toggleable from the menu or settings.
@@ -92,6 +100,10 @@ JSON file at `%APPDATA%\KeyboardCompanion\config.json` (created on first run):
 - `low_battery_threshold` (% below which it notifies)
 - `notify_low_battery` (true/false)
 - `pull_interval_sec` (how often to poll in cable mode)
+- `charge_correction` (true/false — compensate the inflated voltage while charging)
+- `charge_offset_mv` (mV subtracted from the charging voltage before mapping to %;
+  empirical, refined from logged data)
+- `battery_logging` (true/false — opt-in CSV diagnostics in `%APPDATA%`)
 
 ## Add a language
 Edit `keeb_assistant/i18n.py`: add a dict to `TRANSLATIONS` and an entry to
@@ -104,6 +116,8 @@ keeb_assistant/
     hid_reader.py       # unified HID read (dongle push + cable pull)
     ble_reader.py       # Bluetooth battery mirror (Windows PnP property)
     smoothing.py        # EMA + hysteresis
+    battery_model.py    # charging-% correction (voltage compensation)
+    battery_log.py      # opt-in CSV diagnostics
     icon.py             # battery icon drawing
     i18n.py             # translations (en/it/zh, extensible)
     config.py           # JSON config
