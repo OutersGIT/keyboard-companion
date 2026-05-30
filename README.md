@@ -1,6 +1,6 @@
 # KC Utility Assistant
 
-A small, extensible Windows **tray** utility (for now, only a tray) that shows the battery level of Keychron keyboards (10HE only, for now) running modified QMK firmware (custom raw-HID battery
+A small, extensible Windows **tray** utility (for now, only a tray) that shows the battery level of Keychron keyboards (**10HE only, for now**) running modified QMK firmware (custom raw-HID battery
 channel, command `0xA4`). It works over **all three connections**:
 - **USB cable** — raw-HID pull,
 - **2.4 GHz dongle** — raw-HID push (firmware sends the battery on its own),
