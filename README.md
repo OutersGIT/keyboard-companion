@@ -42,8 +42,10 @@ full-size render, the bottom row simulates the size in the Windows tray.
 - Auto-reconnect when switching cable ⇄ dongle or powering the keyboard back on.
 
 ## Requirements
-- K10 HE firmware with battery support (command `0xA4` + push model) — see
-  `../K10HE_BATTERY_PROJECT.md`.
+- A Keychron K10 HE flashed with QMK firmware modified to report battery over
+  the custom raw-HID channel (command `0xA4`, plus the 2.4 GHz push model).
+  Without that firmware there is no HID battery data over cable/dongle; the
+  Bluetooth reading still works, since it mirrors what Windows already exposes.
 - Python 3.9+ (only to run from source or to build the exe).
 
 ## Run from source
