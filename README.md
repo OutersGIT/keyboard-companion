@@ -1,8 +1,10 @@
 # Keyboard Companion
 
+**NOTE: 10HE only, for now**
+
 A small, extensible companion for KeyChron keyboards.
 
-Comes with a Windows **tray** utility that shows the battery level of Keychron keyboards (**10HE only, for now**) running modified QMK firmware (custom raw-HID battery
+Comes with a Windows **tray** utility that shows the battery level, running modified QMK firmware (custom raw-HID battery
 channel, command `0xA4`). It works over **all three connections**:
 - **USB cable** — raw-HID pull,
 - **2.4 GHz dongle** — raw-HID push (firmware sends the battery on its own),
