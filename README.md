@@ -28,6 +28,8 @@ full-size render, the bottom row simulates the size in the Windows tray.
 - **Multi-language UI**: English / Italian / 中文, switchable at runtime and easy
   to extend (see `i18n.py`).
 - **Settings window** (language, threshold, notifications, smoothing, autostart).
+- **Open Launcher** menu entry that opens the official Keychron web launcher in
+  your browser.
 - **Optional** start-with-Windows, toggleable from the menu or settings.
 - Auto-reconnect when switching cable ⇄ dongle or powering the keyboard back on.
 

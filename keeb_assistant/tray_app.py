@@ -37,6 +37,7 @@ class TrayApp:
         self._displayed_pct: int | None = None
         self._connected = False
         self._low_notified = False
+        self._last_menu_sig: str | None = None
         self._last_hid_ts = 0.0  # last time a cable/dongle raw-HID reading arrived
         self._stop = threading.Event()
         self._settings_open = threading.Event()
@@ -206,19 +207,31 @@ class TrayApp:
                 if self._displayed_pct is not None:
                     self.smoother.reset()
                     self._displayed_pct = None
+            icon_img = make_icon(None, connected=False)
+        else:
+            icon_img = make_icon(pct, charging=reading.is_charging, connected=True)
+        # Icon image + tooltip are cheap to set and don't disturb an open menu.
+        try:
+            self.icon.icon = icon_img
+            self.icon.title = self._tooltip_text()
+        except Exception:
+            pass
+        # Rebuild the native menu ONLY when its visible text changes. update_menu()
+        # recreates the popup; doing it on every tick while the menu is open freezes
+        # the hover highlight on the last row (clicks still hit the right item).
+        self._refresh_menu_if_changed()
+
+    def _refresh_menu_if_changed(self) -> None:
+        try:
+            sig = self._info_text()
+        except Exception:
+            return
+        if sig != self._last_menu_sig:
+            self._last_menu_sig = sig
             try:
-                self.icon.icon = make_icon(None, connected=False)
-                self.icon.title = self._tooltip_text()
                 self.icon.update_menu()
             except Exception:
                 pass
-            return
-        try:
-            self.icon.icon = make_icon(pct, charging=reading.is_charging, connected=True)
-            self.icon.title = self._tooltip_text()
-            self.icon.update_menu()
-        except Exception:
-            pass
 
     def _check_low_battery(self, pct: int | None, charging: bool) -> None:
         if pct is None or not self.config["notify_low_battery"]:
@@ -247,6 +260,7 @@ class TrayApp:
         self.config["language"] = i18n.get_language()
         self.config.save()
         self._refresh_ui()
+        self._force_menu_update()  # relabel all menu items in the new language
 
     def apply_settings(self) -> None:
         """Re-read config values that affect runtime behavior (from the window)."""
@@ -277,10 +291,20 @@ class TrayApp:
         result = autostart.set_enabled(not autostart.is_enabled())
         self.config["autostart"] = result
         self.config.save()
+        self._force_menu_update()
 
     def _toggle_notify(self, icon, item) -> None:
         self.config["notify_low_battery"] = not self.config["notify_low_battery"]
         self.config.save()
+        self._force_menu_update()
+
+    def _force_menu_update(self) -> None:
+        """Rebuild the menu now (used after a click closes it, so no hover issue)."""
+        self._last_menu_sig = None
+        try:
+            self.icon.update_menu()
+        except Exception:
+            pass
 
     def _open_launcher(self, icon=None, item=None) -> None:
         try:
