@@ -17,6 +17,10 @@ if ($Clean) {
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt pyinstaller
 
+# Python 3.14's experimental JIT crashes PyInstaller's module analysis
+# (Fatal Python error in dis._deoptop). Disabling it makes the build reliable.
+$env:PYTHON_JIT = "0"
+
 # Regenerate the app icon (battery glyph) if missing.
 if (-not (Test-Path assets\app.ico)) { python make_app_icon.py }
 
