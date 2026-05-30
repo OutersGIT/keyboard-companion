@@ -24,6 +24,11 @@ $env:PYTHON_JIT = "0"
 # Regenerate the app icon (battery glyph) if missing.
 if (-not (Test-Path assets\app.ico)) { python make_app_icon.py }
 
+# PyInstaller prints its INFO log to stderr. With $ErrorActionPreference="Stop"
+# (and PS 7.4+ defaults) PowerShell would treat that as a fatal error and abort,
+# so relax it for the native build and check the exit code ourselves instead.
+$ErrorActionPreference = "Continue"
+
 # --collect-all bundles the hidapi DLL and the pystray win32 backend.
 # --icon + --version-file give the exe its own identity (name/icon) so Windows
 # shows "Keyboard Companion" instead of "Python" in the tray/taskbar settings.
@@ -34,6 +39,11 @@ python -m PyInstaller --noconfirm --noconsole --onefile `
     --collect-all hid `
     --collect-all pystray `
     run_tray.py
+
+if ($LASTEXITCODE -ne 0 -or -not (Test-Path dist\KeyboardCompanion.exe)) {
+    Write-Error "Build failed (PyInstaller exit code $LASTEXITCODE)."
+    exit 1
+}
 
 Write-Host ""
 Write-Host "Done. Executable: dist\KeyboardCompanion.exe"

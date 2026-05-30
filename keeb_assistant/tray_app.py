@@ -5,6 +5,7 @@ from __future__ import annotations
 import sys
 import threading
 import time
+import webbrowser
 
 import pystray
 from pystray import Menu, MenuItem
@@ -19,6 +20,7 @@ STALE_AFTER = 20.0       # seconds without data before the reading is "old"
 UI_TICK = 2.0            # seconds between tooltip refreshes
 BLE_POLL = 15.0          # seconds between Windows BLE battery polls (when no HID)
 TRANSPORT_BLUETOOTH = 2
+LAUNCHER_URL = "https://launcher.keychron.com/"
 
 
 class TrayApp:
@@ -78,6 +80,7 @@ class TrayApp:
             MenuItem(self._info_text, None, enabled=False),
             Menu.SEPARATOR,
             MenuItem(lambda item: i18n.t("menu_settings"), self._open_settings),
+            MenuItem(lambda item: i18n.t("menu_open_launcher"), self._open_launcher),
             MenuItem(lambda item: i18n.t("menu_language"), self._language_menu()),
             MenuItem(
                 lambda item: i18n.t("menu_autostart"),
@@ -278,6 +281,12 @@ class TrayApp:
     def _toggle_notify(self, icon, item) -> None:
         self.config["notify_low_battery"] = not self.config["notify_low_battery"]
         self.config.save()
+
+    def _open_launcher(self, icon=None, item=None) -> None:
+        try:
+            webbrowser.open(LAUNCHER_URL)
+        except Exception:
+            pass
 
     def _quit(self, icon, item) -> None:
         self._stop.set()
