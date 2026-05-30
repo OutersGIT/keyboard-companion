@@ -1,7 +1,7 @@
 # KC Utility Assistant
 
-A small, extensible Windows **tray** utility that shows the battery level of a
-Keychron HE keyboard running modified QMK firmware (custom raw-HID battery
+A small, extensible Windows **tray** utility (for now, only a tray) that shows the battery level of a
+Keychron keyboards (10HE only, for now) running modified QMK firmware (custom raw-HID battery
 channel, command `0xA4`). It works over **all three connections**:
 - **USB cable** — raw-HID pull,
 - **2.4 GHz dongle** — raw-HID push (firmware sends the battery on its own),
@@ -15,6 +15,8 @@ channel, command `0xA4`). It works over **all three connections**:
 
 ![Tray icon states](assets/preview.png)
 
+<img width="229" height="280" alt="image" src="https://github.com/user-attachments/assets/7ecec85c-1de5-4be3-a1b8-1fb82e3f2deb" />
+
 The icon shows a battery glyph with the percentage below; the top row is the
 full-size render, the bottom row simulates the size in the Windows tray.
 
@@ -23,7 +25,7 @@ full-size render, the bottom row simulates the size in the Windows tray.
 - Tooltip + menu with **%, voltage, charging state, link type**.
 - **Smoothing** (EMA + hysteresis) so the value does not flicker.
 - **Low-battery notification** (configurable threshold).
-- **Multi-language UI**: English / Italiano / 中文, switchable at runtime and easy
+- **Multi-language UI**: English / Italian / 中文, switchable at runtime and easy
   to extend (see `i18n.py`).
 - **Settings window** (language, threshold, notifications, smoothing, autostart).
 - **Optional** start-with-Windows, toggleable from the menu or settings.
