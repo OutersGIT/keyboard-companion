@@ -1,16 +1,19 @@
 # Keyboard Companion
 
-**NOTE: KeyChron 10HE only, for now**
+> **For now: Keychron K10 HE only.**
 
-A small, extensible companion for KeyChron keyboards.
+A small, extensible companion app for Keychron keyboards.
 
-Comes with a Windows **tray** utility that shows the battery level, running modified QMK firmware (custom raw-HID battery
-channel, command `0xA4`). It works over **all three connections**:
+It ships with a Windows **tray** utility that shows the keyboard's battery level
+(the keyboard must run the modified QMK firmware with the custom raw-HID battery
+channel, command `0xA4`). Battery reading works over **all three connections**:
 - **USB cable** — raw-HID pull,
 - **2.4 GHz dongle** — raw-HID push (firmware sends the battery on its own),
 - **Bluetooth** — mirrors the battery level Windows already exposes (BLE Battery
   Service), since the vendor raw-HID channel is not available over BT.
-Gives user the possibility to open the launcher and other customizable options.
+
+It can also open the official Keychron launcher and exposes other customizable
+options — and it's designed to grow beyond battery monitoring over time.
 
 > Community project. **Not affiliated with or endorsed by Keychron.** The name
 > refers to it being a companion app for your keyboard.
@@ -20,9 +23,7 @@ Gives user the possibility to open the launcher and other customizable options.
 
 ![Tray icon states](assets/preview.png)
 
-
 <img width="315" height="281" alt="image" src="https://github.com/user-attachments/assets/42a50bf3-5bf6-4ff0-925b-77fb3f2078a0" />
-
 
 The icon shows a battery glyph with the percentage below; the top row is the
 full-size render, the bottom row simulates the size in the Windows tray.
