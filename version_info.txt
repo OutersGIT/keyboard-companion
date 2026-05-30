@@ -1,0 +1,32 @@
+# PyInstaller version resource. Makes Windows show "KC Utility Assistant"
+# (instead of "Python") in the taskbar/tray settings and file properties.
+VSVersionInfo(
+  ffi=FixedFileInfo(
+    filevers=(0, 2, 0, 0),
+    prodvers=(0, 2, 0, 0),
+    mask=0x3f,
+    flags=0x0,
+    OS=0x40004,
+    fileType=0x1,
+    subtype=0x0,
+    date=(0, 0),
+  ),
+  kids=[
+    StringFileInfo([
+      StringTable(
+        '040904B0',
+        [
+          StringStruct('CompanyName', 'Community (unofficial)'),
+          StringStruct('FileDescription', 'KC Utility Assistant'),
+          StringStruct('FileVersion', '0.2.0'),
+          StringStruct('InternalName', 'KCUtilityAssistant'),
+          StringStruct('LegalCopyright', 'Community project. Not affiliated with Keychron.'),
+          StringStruct('OriginalFilename', 'KCUtilityAssistant.exe'),
+          StringStruct('ProductName', 'KC Utility Assistant'),
+          StringStruct('ProductVersion', '0.2.0'),
+        ],
+      )
+    ]),
+    VarFileInfo([VarStruct('Translation', [1033, 1200])]),
+  ],
+)
