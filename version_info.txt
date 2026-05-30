@@ -1,4 +1,4 @@
-# PyInstaller version resource. Makes Windows show "KC Utility Assistant"
+# PyInstaller version resource. Makes Windows show "Keyboard Companion"
 # (instead of "Python") in the taskbar/tray settings and file properties.
 VSVersionInfo(
   ffi=FixedFileInfo(
@@ -17,12 +17,12 @@ VSVersionInfo(
         '040904B0',
         [
           StringStruct('CompanyName', 'Community (unofficial)'),
-          StringStruct('FileDescription', 'KC Utility Assistant'),
+          StringStruct('FileDescription', 'Keyboard Companion'),
           StringStruct('FileVersion', '0.2.0'),
-          StringStruct('InternalName', 'KCUtilityAssistant'),
+          StringStruct('InternalName', 'KeyboardCompanion'),
           StringStruct('LegalCopyright', 'Community project. Not affiliated with Keychron.'),
-          StringStruct('OriginalFilename', 'KCUtilityAssistant.exe'),
-          StringStruct('ProductName', 'KC Utility Assistant'),
+          StringStruct('OriginalFilename', 'KeyboardCompanion.exe'),
+          StringStruct('ProductName', 'Keyboard Companion'),
           StringStruct('ProductVersion', '0.2.0'),
         ],
       )

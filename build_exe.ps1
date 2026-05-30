@@ -1,4 +1,4 @@
-# Build a single-file Windows .exe for KC Utility Assistant.
+# Build a single-file Windows .exe for Keyboard Companion.
 #
 # Usage (PowerShell, from this folder):
 #   .\build_exe.ps1            # build
@@ -22,9 +22,9 @@ if (-not (Test-Path assets\app.ico)) { python make_app_icon.py }
 
 # --collect-all bundles the hidapi DLL and the pystray win32 backend.
 # --icon + --version-file give the exe its own identity (name/icon) so Windows
-# shows "KC Utility Assistant" instead of "Python" in the tray/taskbar settings.
+# shows "Keyboard Companion" instead of "Python" in the tray/taskbar settings.
 python -m PyInstaller --noconfirm --noconsole --onefile `
-    --name KCUtilityAssistant `
+    --name KeyboardCompanion `
     --icon assets\app.ico `
     --version-file version_info.txt `
     --collect-all hid `
@@ -32,4 +32,4 @@ python -m PyInstaller --noconfirm --noconsole --onefile `
     run_tray.py
 
 Write-Host ""
-Write-Host "Done. Executable: dist\KCUtilityAssistant.exe"
+Write-Host "Done. Executable: dist\KeyboardCompanion.exe"

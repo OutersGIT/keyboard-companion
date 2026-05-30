@@ -1,4 +1,4 @@
-# KC Utility Assistant
+# Keyboard Companion
 
 A small, extensible Windows **tray** utility (for now, only a tray) that shows the battery level of Keychron keyboards (**10HE only, for now**) running modified QMK firmware (custom raw-HID battery
 channel, command `0xA4`). It works over **all three connections**:
@@ -7,7 +7,8 @@ channel, command `0xA4`). It works over **all three connections**:
 - **Bluetooth** — mirrors the battery level Windows already exposes (BLE Battery
   Service), since the vendor raw-HID channel is not available over BT.
 
-> Community project. **Not affiliated with or endorsed by Keychron.**
+> Community project. **Not affiliated with or endorsed by Keychron.** The name
+> refers to it being a companion app for your keyboard.
 > The name is configurable in `keeb_assistant/__init__.py` (`APP_NAME`, `APP_ID`).
 
 ## Tray icon
@@ -46,7 +47,7 @@ python -m keeb_assistant --once     # print one reading and exit (debug)
 ## Build a single .exe
 ```powershell
 cd keeb_assistant
-.\build_exe.ps1            # produces dist\KCUtilityAssistant.exe
+.\build_exe.ps1            # produces dist\KeyboardCompanion.exe
 ```
 The exe is self-contained (no Python needed). Double-click it; the tray icon
 appears. Right-click → Quit to exit.
@@ -56,7 +57,7 @@ Off by default. Toggle it from the tray menu or the settings window. It simply
 adds/removes an entry under `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`.
 
 ## Configuration
-JSON file at `%APPDATA%\KCUtilityAssistant\config.json` (created on first run):
+JSON file at `%APPDATA%\KeyboardCompanion\config.json` (created on first run):
 - `language` (`en` / `it` / `zh`)
 - `smoothing_alpha` (0–1, lower = steadier/slower)
 - `smoothing_deadband` (percentage points of hysteresis before the shown value moves)

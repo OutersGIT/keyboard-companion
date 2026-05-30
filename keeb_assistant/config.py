@@ -1,4 +1,4 @@
-"""Persistent JSON configuration stored in %APPDATA%/KeebBatteryAssistant."""
+"""Persistent JSON configuration stored in %APPDATA%/KeyboardCompanion."""
 
 from __future__ import annotations
 
