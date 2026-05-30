@@ -1,6 +1,6 @@
 # Keyboard Companion
 
-**NOTE: 10HE only, for now**
+**NOTE: KeyChron 10HE only, for now**
 
 A small, extensible companion for KeyChron keyboards.
 
