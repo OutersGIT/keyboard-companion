@@ -10,7 +10,7 @@ import webbrowser
 import pystray
 from pystray import Menu, MenuItem
 
-from . import APP_ID, APP_NAME, __version__, autostart, ble_reader, i18n
+from . import APP_ID, APP_NAME, autostart, ble_reader, i18n
 from .config import Config
 from .hid_reader import BatteryReader, BatteryReading
 from .icon import make_icon
@@ -37,7 +37,6 @@ class TrayApp:
         self._displayed_pct: int | None = None
         self._connected = False
         self._low_notified = False
-        self._last_menu_sig: str | None = None
         self._last_hid_ts = 0.0  # last time a cable/dongle raw-HID reading arrived
         self._stop = threading.Event()
         self._settings_open = threading.Event()
@@ -77,9 +76,10 @@ class TrayApp:
         return lambda item: i18n.get_language() == code
 
     def _build_menu(self) -> Menu:
+        # Intentionally no live values here: all battery info lives in the
+        # tooltip. A static menu means update_menu() is only called on explicit
+        # user actions, so the hover highlight never gets rebuilt mid-hover.
         return Menu(
-            MenuItem(self._info_text, None, enabled=False),
-            Menu.SEPARATOR,
             MenuItem(lambda item: i18n.t("menu_settings"), self._open_settings),
             MenuItem(lambda item: i18n.t("menu_open_launcher"), self._open_launcher),
             MenuItem(lambda item: i18n.t("menu_language"), self._language_menu()),
@@ -94,7 +94,6 @@ class TrayApp:
                 checked=lambda item: bool(self.config["notify_low_battery"]),
             ),
             Menu.SEPARATOR,
-            MenuItem(f"{APP_NAME} v{__version__}", None, enabled=False),
             MenuItem(lambda item: i18n.t("menu_quit"), self._quit),
         )
 
@@ -114,21 +113,6 @@ class TrayApp:
         if (time.time() - reading.timestamp) >= STALE_AFTER:
             return None, None
         return reading, pct
-
-    def _info_text(self, item=None) -> str:
-        reading, pct = self._snapshot()
-        if reading is None:
-            return i18n.t("undetected")
-        if reading.source == "windows":
-            return i18n.t("info_line_ble", pct=pct, transport=reading.transport_name)
-        return i18n.t(
-            "info_line",
-            pct=pct,
-            mv=reading.voltage_mv,
-            charging=i18n.t(f"charging_{reading.charging_code}"),
-            transport=reading.transport_name,
-            age="",
-        )
 
     def _tooltip_text(self) -> str:
         """Multi-line tray tooltip: app name + one bullet per field."""
@@ -211,27 +195,12 @@ class TrayApp:
         else:
             icon_img = make_icon(pct, charging=reading.is_charging, connected=True)
         # Icon image + tooltip are cheap to set and don't disturb an open menu.
+        # The menu carries no live values, so it is never rebuilt from here.
         try:
             self.icon.icon = icon_img
             self.icon.title = self._tooltip_text()
         except Exception:
             pass
-        # Rebuild the native menu ONLY when its visible text changes. update_menu()
-        # recreates the popup; doing it on every tick while the menu is open freezes
-        # the hover highlight on the last row (clicks still hit the right item).
-        self._refresh_menu_if_changed()
-
-    def _refresh_menu_if_changed(self) -> None:
-        try:
-            sig = self._info_text()
-        except Exception:
-            return
-        if sig != self._last_menu_sig:
-            self._last_menu_sig = sig
-            try:
-                self.icon.update_menu()
-            except Exception:
-                pass
 
     def _check_low_battery(self, pct: int | None, charging: bool) -> None:
         if pct is None or not self.config["notify_low_battery"]:
@@ -300,7 +269,6 @@ class TrayApp:
 
     def _force_menu_update(self) -> None:
         """Rebuild the menu now (used after a click closes it, so no hover issue)."""
-        self._last_menu_sig = None
         try:
             self.icon.update_menu()
         except Exception:
@@ -318,8 +286,36 @@ class TrayApp:
         icon.stop()
 
     # -- lifecycle ---------------------------------------------------------
+    def _install_doubleclick_handler(self) -> None:
+        """Open Settings on a tray double-click.
+
+        pystray's cross-platform API only exposes a single 'default' action, but
+        on Windows the shell still delivers WM_LBUTTONDBLCLK to the icon's
+        callback. We hook the win32 backend's notify dispatch to catch it and
+        leave single-click unbound. No-op (and harmless) on other platforms or
+        if pystray internals ever change.
+        """
+        if not sys.platform.startswith("win"):
+            return
+        try:
+            from pystray._util import win32 as _w32
+
+            WM_LBUTTONDBLCLK = 0x0203
+            base = self.icon._on_notify
+
+            def _on_notify(wparam, lparam):
+                if lparam == WM_LBUTTONDBLCLK:
+                    self._open_settings()
+                    return None
+                return base(wparam, lparam)
+
+            self.icon._message_handlers[_w32.WM_NOTIFY] = _on_notify
+        except Exception:
+            pass
+
     def _setup(self, icon) -> None:
         icon.visible = True
+        self._install_doubleclick_handler()
         self.reader.start()
         threading.Thread(target=self._ui_ticker, daemon=True, name="UiTicker").start()
         threading.Thread(target=self._ble_poller, daemon=True, name="BlePoller").start()

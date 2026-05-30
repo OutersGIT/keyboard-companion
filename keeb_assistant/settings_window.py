@@ -10,14 +10,14 @@ from __future__ import annotations
 import tkinter as tk
 from tkinter import ttk
 
-from . import APP_NAME, autostart, i18n
+from . import APP_NAME, __version__, autostart, i18n
 
 
 def open_settings(app) -> None:
     cfg = app.config
 
     root = tk.Tk()
-    root.title(i18n.t("settings_title", app=APP_NAME))
+    root.title(APP_NAME)
     root.resizable(False, False)
     try:
         root.attributes("-topmost", True)
@@ -43,11 +43,12 @@ def open_settings(app) -> None:
     lbl_smoothing = ttk.Label(frame)
     chk_autostart = ttk.Checkbutton(frame, variable=autostart_var)
     lbl_note = ttk.Label(frame, foreground="#666", wraplength=320)
+    lbl_version = ttk.Label(frame, foreground="#888", text=f"{APP_NAME}  v{__version__}")
     btn_save = ttk.Button(frame)
     btn_close = ttk.Button(frame)
 
     def retranslate() -> None:
-        root.title(i18n.t("settings_title", app=APP_NAME))
+        root.title(APP_NAME)
         lbl_language.config(text=i18n.t("settings_language"))
         lbl_threshold.config(text=i18n.t("settings_threshold"))
         chk_notify.config(text=i18n.t("settings_notify"))
@@ -99,6 +100,7 @@ def open_settings(app) -> None:
     lbl_note.grid(row=5, column=0, columnspan=2, sticky="w", pady=(10, 8))
     btn_save.grid(row=6, column=0, sticky="w", pady=(4, 0))
     btn_close.grid(row=6, column=1, sticky="e", pady=(4, 0))
+    lbl_version.grid(row=7, column=0, columnspan=2, sticky="w", pady=(12, 0))
 
     retranslate()
 
