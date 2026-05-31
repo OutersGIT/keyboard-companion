@@ -21,14 +21,16 @@ options — and it's designed to grow beyond battery monitoring over time.
 > refers to it being a companion app for your keyboard.
 > The name is configurable in `keeb_assistant/__init__.py` (`APP_NAME`, `APP_ID`).
 
-## Tray icon
+## Tray icon and app
 
 ![Tray icon states](assets/preview.png)
 
-<img width="315" height="281" alt="image" src="https://github.com/user-attachments/assets/42a50bf3-5bf6-4ff0-925b-77fb3f2078a0" />
+<p><img width="315" height="281" alt="full-size vs tray render" src="https://github.com/user-attachments/assets/42a50bf3-5bf6-4ff0-925b-77fb3f2078a0" /></p>
+
+<p><img width="500" height="480" alt="settings window" src="https://github.com/user-attachments/assets/d47890b5-6b17-4989-9f31-3f59c31311e4" /></p>
 
 The icon shows a battery glyph with the percentage below; the top row is the
-full-size render, the bottom row simulates the size in the Windows tray.
+full-size render, the bottom row simulates the size in the Windows tray. In the second image you can see the actual tooltip in Windows for mouse-hovering. The last image references the main tab for Settings (or double click on tray).
 
 ## Features
 
