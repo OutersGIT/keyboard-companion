@@ -76,6 +76,17 @@ right-click it for the menu (or double-click the icon to open Settings).
 > firmware (see [Requirements](#requirements)). The **Bluetooth** reading works
 > out of the box, since it mirrors what Windows already reports.
 
+> **Antivirus false positives.** The `.exe` is an **unsigned** build packaged with
+> [PyInstaller](https://pyinstaller.org/). Since PyInstaller bundles Python and
+> self-extracts at launch, some engines' machine-learning heuristics may flag it
+> (e.g. Microsoft's generic `Trojan:Win32/Wacatac.B!ml`) — this is a well-known
+> false positive for Python-packaged apps, **not** actual malware, and only a
+> couple of engines out of ~70 raise it. Since the project is open source you can
+> verify it yourself: scan it on [VirusTotal](https://www.virustotal.com/),
+> [build the `.exe` yourself](#build-a-single-exe), or simply
+> [run it from source](#run-from-source) if you'd rather not trust the prebuilt
+> binary.
+
 Devs can run from source or rebuild the exe — see
 [Run from source](#run-from-source) and [Build a single .exe](#build-a-single-exe).
 
