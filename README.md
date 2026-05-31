@@ -33,7 +33,7 @@ full-size render, the bottom row simulates the size in the Windows tray.
 ## Features
 
 > Per-version changes are on the
-> [**Releases**](https://github.com/OutersSoftware/keyboard-companion/releases) page.
+> [**Releases**](https://github.com/OutersGIT/keyboard-companion/releases) page.
 - Tray icon with the **battery percentage** and color by level (green/amber/red).
 - Tooltip + menu with **%, voltage, charging state, link type**.
 - **Smoothing** (EMA + hysteresis) so the value does not flicker.
@@ -58,7 +58,7 @@ full-size render, the bottom row simulates the size in the Windows tray.
 - A Keychron K10 HE flashed with QMK firmware modified to report battery over
   the custom raw-HID channel (command `0xA4`, plus the 2.4 GHz push model) —
   see the firmware repo
-  **[k10he-battery-firmware](https://github.com/OutersSoftware/k10he-battery-firmware)**.
+  **[k10he-battery-firmware](https://github.com/OutersGIT/k10he-battery-firmware)**.
   Without that firmware there is no HID battery data over cable/dongle; the
   Bluetooth reading still works, since it mirrors what Windows already exposes.
 - Python 3.9+ (only to run from source or to build the exe).
@@ -66,7 +66,7 @@ full-size render, the bottom row simulates the size in the Windows tray.
 ## Download (Windows)
 
 Grab the latest version from the
-[**Releases**](https://github.com/OutersSoftware/keyboard-companion/releases)
+[**Releases**](https://github.com/OutersGIT/keyboard-companion/releases)
 page, then just double-click it. The tray icon appears;
 right-click it for the menu (or double-click the icon to open Settings).
 
