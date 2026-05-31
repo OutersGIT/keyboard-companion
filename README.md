@@ -30,7 +30,10 @@ options — and it's designed to grow beyond battery monitoring over time.
 The icon shows a battery glyph with the percentage below; the top row is the
 full-size render, the bottom row simulates the size in the Windows tray.
 
-## Features (v0.2)
+## Features
+
+> Per-version changes are on the
+> [**Releases**](https://github.com/OutersSoftware/keyboard-companion/releases) page.
 - Tray icon with the **battery percentage** and color by level (green/amber/red).
 - Tooltip + menu with **%, voltage, charging state, link type**.
 - **Smoothing** (EMA + hysteresis) so the value does not flicker.
