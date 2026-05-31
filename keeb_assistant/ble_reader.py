@@ -6,6 +6,15 @@ opening our own GATT connection (which can clash with the OS holding the HID
 link), we simply read the battery level Windows already cached as a device
 property: DEVPKEY_Bluetooth_Battery = {104EA319-6EE2-4701-BD47-8DDBF425BBE5},2.
 
+CRUCIAL: that battery value is *cached*. Windows keeps a paired BLE device
+"present" (with its last-known battery) for a while after it disconnects, so
+`-PresentOnly` alone is NOT enough — it would mirror a stale percentage for a
+keyboard that is actually off/away. We therefore also require the device to be
+*actively connected* via the Bluetooth connection-status property
+{83DA6326-97A6-4088-9453-A1923F573B29},15 (True only while connected; confirmed
+on the K10 HE BTHLE node). If it is not connected we return None, so the tray
+falls back to "Undetected" instead of showing a phantom Bluetooth reading.
+
 This is read via PowerShell's Get-PnpDeviceProperty, matching the keyboard by
 friendly name. No extra Python dependency required.
 """
@@ -20,14 +29,20 @@ import sys
 NAME_PATTERN = "Keychron|K10|Lemokey"
 
 _BATTERY_KEY = "{104EA319-6EE2-4701-BD47-8DDBF425BBE5} 2"
+# Bluetooth "is connected" flag (True only while the device is actively connected).
+_CONNECTED_KEY = "{83DA6326-97A6-4088-9453-A1923F573B29} 15"
 
 _PS_SCRIPT = (
     "$ErrorActionPreference='SilentlyContinue';"
-    f"$key='{_BATTERY_KEY}';"
+    f"$bat='{_BATTERY_KEY}';"
+    f"$conn='{_CONNECTED_KEY}';"
     f"Get-PnpDevice -PresentOnly | Where-Object {{ $_.FriendlyName -match '{NAME_PATTERN}' }} | "
     "ForEach-Object {"
-    " $p = Get-PnpDeviceProperty -InstanceId $_.InstanceId -KeyName $key;"
-    " if ($p -and $p.Data -ne $null) { Write-Output $p.Data }"
+    " $c = (Get-PnpDeviceProperty -InstanceId $_.InstanceId -KeyName $conn).Data;"
+    " if ($c -eq $true) {"
+    "  $b = (Get-PnpDeviceProperty -InstanceId $_.InstanceId -KeyName $bat).Data;"
+    "  if ($b -ne $null) { Write-Output $b }"
+    " }"
     "}"
 )
 

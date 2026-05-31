@@ -10,7 +10,9 @@ channel, command `0xA4`). Battery reading works over **all three connections**:
 - **USB cable** — raw-HID pull,
 - **2.4 GHz dongle** — raw-HID push (firmware sends the battery on its own),
 - **Bluetooth** — mirrors the battery level Windows already exposes (BLE Battery
-  Service), since the vendor raw-HID channel is not available over BT.
+  Service), since the vendor raw-HID channel is not available over BT. Shown only
+  while the keyboard is **actively connected** (not just paired), so a powered-off
+  keyboard never leaves a stale Bluetooth reading on screen.
 
 It can also open the official Keychron launcher and exposes other customizable
 options — and it's designed to grow beyond battery monitoring over time.
