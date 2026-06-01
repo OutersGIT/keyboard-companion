@@ -54,6 +54,7 @@ full-size render, the bottom row simulates the size in the Windows tray. In the 
 - **Open Launcher** menu entry that opens the official Keychron web launcher in
   your browser.
 - **Optional** start-with-Windows, toggleable from the menu or settings.
+- **Single tray instance** on Windows (a second launch exits quietly if one is already running).
 - Auto-reconnect when switching cable ⇄ dongle or powering the keyboard back on.
 
 ## Requirements
@@ -67,28 +68,30 @@ full-size render, the bottom row simulates the size in the Windows tray. In the 
 
 ## Download (Windows)
 
-Grab the latest version from the
+Grab the latest **`KeyboardCompanion-win64.zip`** from the
 [**Releases**](https://github.com/OutersGIT/keyboard-companion/releases)
-page, then just double-click it. The tray icon appears;
+page, extract it to a folder you keep (e.g. `C:\Tools\KeyboardCompanion\`),
+then run **`KeyboardCompanion.exe`** inside that folder. The tray icon appears;
 right-click it for the menu (or double-click the icon to open Settings).
+
+Keep the **whole extracted folder** together — do not move or delete the DLLs
+and other files next to the exe.
 
 > The battery reading over **cable / 2.4 GHz dongle** requires the modified QMK
 > firmware (see [Requirements](#requirements)). The **Bluetooth** reading works
 > out of the box, since it mirrors what Windows already reports.
 
-> **Antivirus false positives.** The `.exe` is an **unsigned** build packaged with
-> [PyInstaller](https://pyinstaller.org/). Since PyInstaller bundles Python and
-> self-extracts at launch, some engines' machine-learning heuristics may flag it
-> (e.g. Microsoft's generic `Trojan:Win32/Wacatac.B!ml`) — this is a well-known
-> false positive for Python-packaged apps, **not** actual malware, and only a
-> couple of engines out of ~70 raise it. Since the project is open source you can
-> verify it yourself: scan it on [VirusTotal](https://www.virustotal.com/),
-> [build the `.exe` yourself](#build-a-single-exe), or simply
-> [run it from source](#run-from-source) if you'd rather not trust the prebuilt
-> binary.
+> **Antivirus / trust.** The Windows build is an **unsigned** [PyInstaller](https://pyinstaller.org/)
+> **onedir** app (a folder with the exe and its runtime files — no single-file
+> self-extractor). That layout is much less likely to trip ML heuristics than the
+> old one-file packer style, but a few scanners may still flag unsigned binaries.
+> Since the project is open source you can verify it yourself: scan the zip on
+> [VirusTotal](https://www.virustotal.com/),
+> [build it yourself](#build-for-windows), or
+> [run it from source](#run-from-source).
 
-Devs can run from source or rebuild the exe — see
-[Run from source](#run-from-source) and [Build a single .exe](#build-a-single-exe).
+Devs can run from source or rebuild — see
+[Run from source](#run-from-source) and [Build for Windows](#build-for-windows).
 
 ## Run from source
 ```powershell
@@ -98,17 +101,21 @@ python -m keeb_assistant            # launch the tray app
 python -m keeb_assistant --once     # print one reading and exit (debug)
 ```
 
-## Build a single .exe
+## Build for Windows
 ```powershell
 cd keeb_assistant
-.\build_exe.ps1            # produces dist\KeyboardCompanion.exe
+.\build_exe.ps1            # dist\KeyboardCompanion\ + dist\KeyboardCompanion-win64.zip
 ```
-The exe is self-contained (no Python needed). Double-click it; the tray icon
-appears. Right-click → Quit to exit.
+No Python needed on the target PC. Extract the zip (or copy the folder), run
+`KeyboardCompanion.exe` inside it. Right-click the tray icon → Quit to exit.
 
 ## Autostart (optional)
-Off by default. Toggle it from the tray menu or the settings window. It simply
-adds/removes an entry under `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`.
+Off by default. Toggle it from the tray menu or the settings window. It adds or
+removes an entry under `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` pointing
+at the **current** executable. The tray checkbox is only checked when that entry
+exists, matches this install, and the target file is still on disk. On each app
+start, if autostart is enabled in config, the Run value is refreshed (covers renames,
+moves, and new downloads); stale orphan keys are removed when autostart is off.
 
 ## Configuration
 JSON file at `%APPDATA%\KeyboardCompanion\config.json` (created on first run):
@@ -140,6 +147,7 @@ keeb_assistant/
     i18n.py             # translations (en/it/zh, extensible)
     config.py           # JSON config
     autostart.py        # Windows autostart (registry)
+    single_instance.py  # one tray instance (Windows mutex)
     settings_window.py  # Tk settings window
     tray_app.py         # tray app (pystray)
     __main__.py         # entry + CLI --once

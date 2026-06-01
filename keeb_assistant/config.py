@@ -24,8 +24,8 @@ DEFAULTS = {
     # subtract before mapping to % (empirical; refine from logged CSV data).
     "charge_correction": True,
     "charge_offset_mv": 120,
-    # autostart is the source of truth in the registry; this is just a mirror
-    # used to render the menu checkbox without a registry read on every paint.
+    # User preference for autostart; registry is synced on startup via
+    # autostart.sync_from_config(). The menu checkbox reads the registry live.
     "autostart": False,
 }
 

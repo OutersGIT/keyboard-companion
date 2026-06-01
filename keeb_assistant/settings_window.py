@@ -89,7 +89,7 @@ def open_settings(app) -> None:
         except (tk.TclError, ValueError):
             pass
         cfg["smoothing_alpha"] = round(float(alpha_var.get()), 2)
-        autostart.set_enabled(bool(autostart_var.get()))
+        cfg["autostart"] = autostart.set_enabled(bool(autostart_var.get()))
         cfg["charge_correction"] = bool(correction_var.get())
         cfg["battery_logging"] = bool(logging_var.get())
         app.apply_settings()

@@ -11,6 +11,7 @@ import pystray
 from pystray import Menu, MenuItem
 
 from . import APP_ID, APP_NAME, autostart, battery_log, battery_model, ble_reader, i18n
+from . import single_instance
 from .config import Config
 from .hid_reader import BatteryReader, BatteryReading
 from .icon import make_icon
@@ -26,6 +27,12 @@ LAUNCHER_URL = "https://launcher.keychron.com/"
 class TrayApp:
     def __init__(self):
         self.config = Config.load()
+        effective_autostart = autostart.sync_from_config(
+            bool(self.config.get("autostart", False))
+        )
+        if effective_autostart != bool(self.config.get("autostart", False)):
+            self.config["autostart"] = effective_autostart
+            self.config.save()
         i18n.set_language(self.config.get("language", i18n.DEFAULT_LANGUAGE))
         self.smoother = BatterySmoother(
             alpha=self.config["smoothing_alpha"],
@@ -359,6 +366,8 @@ def _set_app_user_model_id() -> None:
 
 
 def main() -> None:
+    if not single_instance.try_acquire():
+        sys.exit(0)
     _set_app_user_model_id()
     TrayApp().run()
 
