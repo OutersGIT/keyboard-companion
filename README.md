@@ -37,7 +37,13 @@ full-size render, the bottom row simulates the size in the Windows tray. In the 
 > Per-version changes are on the
 > [**Releases**](https://github.com/OutersGIT/keyboard-companion/releases) page.
 - Tray icon with the **battery percentage** and color by level (green/amber/red).
-- Tooltip + menu with **%, voltage, charging state, link type**.
+- Tooltip with the **connected keyboard's name** (when available), **%, voltage,
+  charging state, link type**.
+- **Connected device name** in the tooltip across all three links: on **cable**
+  it reads the keyboard's own USB product string (works for any Keychron board),
+  on the **2.4 GHz dongle** it uses the model id reported by the modified firmware
+  (the dongle only exposes its own generic name otherwise), and on **Bluetooth**
+  it uses the friendly name Windows shows for the connected device.
 - **Smoothing** (EMA + hysteresis) so the value does not flicker.
 - **Charging-% correction**: while charging, the battery voltage is inflated, so
   the keyboard's own percentage overestimates the true charge. The app
@@ -55,6 +61,11 @@ full-size render, the bottom row simulates the size in the Windows tray. In the 
   your browser.
 - **Optional** start-with-Windows, toggleable from the menu or settings.
 - **Single tray instance** on Windows (a second launch exits quietly if one is already running).
+- **Flash firmware…** wizard (tray menu): pick a `.bin`, confirm, then it guides you
+  through entering the STM32 DFU bootloader (it shows the live "currently connected"
+  state while waiting) and flashes via `dfu-util` with a **real-time progress bar**,
+  returning to the home screen with the updated firmware info when done. Needs
+  `dfu-util` / the QMK Toolbox WinUSB driver present on the system.
 - Auto-reconnect when switching cable ⇄ dongle or powering the keyboard back on.
 
 ## Requirements
@@ -148,6 +159,8 @@ keeb_assistant/
     config.py           # JSON config
     autostart.py        # Windows autostart (registry)
     single_instance.py  # one tray instance (Windows mutex)
+    firmware_flash.py   # cable detection + dfu-util flash
+    flash_window.py     # flash wizard (Tk)
     settings_window.py  # Tk settings window
     tray_app.py         # tray app (pystray)
     __main__.py         # entry + CLI --once

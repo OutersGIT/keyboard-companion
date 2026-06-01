@@ -6,6 +6,11 @@ from PIL import Image, ImageDraw, ImageFont
 
 SIZE = 64
 
+# Loaded fonts are cached and reused. FreeType is not thread-safe, so callers
+# must serialize make_icon() (see TrayApp._render_lock); given that, sharing one
+# font object is both safe and avoids reloading the .ttf on every render.
+_FONT_CACHE: dict[int, "ImageFont.FreeTypeFont | ImageFont.ImageFont"] = {}
+
 
 def _level_color(percentage: int | None, charging: bool) -> tuple:
     if charging:
@@ -20,12 +25,20 @@ def _level_color(percentage: int | None, charging: bool) -> tuple:
 
 
 def _load_font(size: int):
+    cached = _FONT_CACHE.get(size)
+    if cached is not None:
+        return cached
+    font = None
     for name in ("segoeui.ttf", "arial.ttf", "DejaVuSans.ttf"):
         try:
-            return ImageFont.truetype(name, size)
+            font = ImageFont.truetype(name, size)
+            break
         except OSError:
             continue
-    return ImageFont.load_default()
+    if font is None:
+        font = ImageFont.load_default()
+    _FONT_CACHE[size] = font
+    return font
 
 
 def make_icon(percentage: int | None, charging: bool = False, connected: bool = True) -> Image.Image:

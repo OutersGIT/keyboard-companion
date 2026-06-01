@@ -9,6 +9,14 @@ param([switch]$Clean)
 $ErrorActionPreference = "Stop"
 Set-Location $PSScriptRoot
 
+# Prefer a stable Python 3.13 install for PyInstaller builds (3.14 has
+# intermittent crashes even with JIT disabled). Fall back to whatever
+# "python" points to if 3.13 is not available.
+$PythonExe = "C:\Python313\python.exe"
+if (-not (Test-Path $PythonExe)) {
+    $PythonExe = "python"
+}
+
 $AppDir = "dist\KeyboardCompanion"
 $AppExe = "$AppDir\KeyboardCompanion.exe"
 $ZipPath = "dist\KeyboardCompanion-win64.zip"
@@ -18,15 +26,16 @@ if ($Clean) {
     Remove-Item -Force *.spec -ErrorAction SilentlyContinue
 }
 
-python -m pip install --upgrade pip
-python -m pip install -r requirements.txt pyinstaller
+& $PythonExe -m pip install --upgrade pip
+& $PythonExe -m pip install -r requirements.txt pyinstaller
 
-# Python 3.14's experimental JIT crashes PyInstaller's module analysis
-# (Fatal Python error in dis._deoptop). Disabling it makes the build reliable.
+# Python 3.14's experimental JIT crashes PyInstaller's module analysis.
+# When building with 3.13 this env var is harmless; with 3.14 it makes
+# the build more reliable.
 $env:PYTHON_JIT = "0"
 
 # Regenerate the app icon (battery glyph) if missing.
-if (-not (Test-Path assets\app.ico)) { python make_app_icon.py }
+if (-not (Test-Path assets\app.ico)) { & $PythonExe make_app_icon.py }
 
 # PyInstaller prints its INFO log to stderr. With $ErrorActionPreference="Stop"
 # (and PS 7.4+ defaults) PowerShell would treat that as a fatal error and abort,
@@ -36,7 +45,7 @@ $ErrorActionPreference = "Continue"
 # onedir: a normal exe + bundled deps in the same folder (no temp self-extract).
 # --noupx avoids UPX compression, which AV heuristics often flag.
 # --collect-all bundles the hidapi DLL and the pystray win32 backend.
-python -m PyInstaller --noconfirm --noconsole --onedir --noupx `
+& $PythonExe -m PyInstaller --noconfirm --noconsole --onedir --noupx `
     --name KeyboardCompanion `
     --icon assets\app.ico `
     --version-file version_info.txt `

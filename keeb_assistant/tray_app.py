@@ -2,15 +2,19 @@
 
 from __future__ import annotations
 
+import faulthandler
+import os
 import sys
 import threading
 import time
+import traceback
 import webbrowser
 
 import pystray
 from pystray import Menu, MenuItem
 
 from . import APP_ID, APP_NAME, autostart, battery_log, battery_model, ble_reader, i18n
+from . import hid_reader, firmware_flash
 from . import single_instance
 from .config import Config
 from .hid_reader import BatteryReader, BatteryReading
@@ -40,13 +44,26 @@ class TrayApp:
         )
 
         self._lock = threading.Lock()
+        # Serializes icon rendering + tray updates. make_icon() uses PIL/FreeType,
+        # which is not thread-safe; _refresh_ui is called from several threads
+        # (UI ticker, reader callback, status callback), so concurrent renders
+        # would corrupt FreeType state and crash the process.
+        self._render_lock = threading.Lock()
         self._latest: BatteryReading | None = None
         self._displayed_pct: int | None = None
         self._connected = False
         self._low_notified = False
         self._last_hid_ts = 0.0  # last time a cable/dongle raw-HID reading arrived
+        # Cached tooltip device name. Resolving it can do HID enumeration or spawn
+        # PowerShell, so it is computed only when the transport/model changes, and
+        # only on the thread that produced the reading (which already owns the HID
+        # devices) — never on the UI ticker, which would race the reader thread's
+        # raw-HID I/O and crash the process (concurrent hidapi access on Windows).
+        self._device_label: str | None = None
+        self._device_label_key: tuple | None = None
         self._stop = threading.Event()
         self._settings_open = threading.Event()
+        self._flash_open = threading.Event()
 
         self.icon = pystray.Icon(
             APP_ID,
@@ -100,6 +117,7 @@ class TrayApp:
                 self._toggle_notify,
                 checked=lambda item: bool(self.config["notify_low_battery"]),
             ),
+            MenuItem(lambda item: i18n.t("menu_flash_firmware"), self._open_flash_wizard),
             Menu.SEPARATOR,
             MenuItem(lambda item: i18n.t("menu_quit"), self._quit),
         )
@@ -127,15 +145,53 @@ class TrayApp:
         if reading is None:
             return f"{APP_NAME}\n• {i18n.t('undetected')}"
         # Bullet layout, with the transport always in the same (last) slot:
+        #   • <device name> (when known)
         #   • <pct>%
         #   • <charging>   (only when known — not available over the BLE mirror)
         #   • <transport>  ("Bluetooth" / "2.4 GHz" / "USB")
-        lines = [APP_NAME, f"• {pct}%"]
+        # The device name is resolved elsewhere (cached) so this hot path, which
+        # also runs on the UI ticker thread, never touches HID or spawns a process.
+        with self._lock:
+            device_label = self._device_label
+        lines = [APP_NAME]
+        if device_label:
+            lines.append(f"• {i18n.t('tooltip_device_line', device=device_label)}")
+        lines.append(f"• {pct}%")
         if reading.source != "windows":
             lines.append(f"• {reading.voltage_mv} mV")
             lines.append(f"• {i18n.t(f'charging_{reading.charging_code}')}")
         lines.append(f"• {reading.transport_name}")
         return "\n".join(lines)
+
+    def _compute_device_label(self, reading: BatteryReading) -> str | None:
+        """Resolve the connected keyboard's display name.
+
+        May enumerate HID (cable/dongle) or spawn PowerShell (BLE name), so it is
+        only ever called from the thread that produced the reading — the reader
+        thread for HID, the BLE poller thread for Windows — never the UI ticker.
+        """
+        try:
+            if reading.source == "windows":
+                return ble_reader.read_bluetooth_device_name()
+            if reading.transport == firmware_flash.TRANSPORT_USB:
+                # Enumeration-only (no device open) → safe on the reader thread.
+                return firmware_flash.cable_model_label()
+            if (getattr(reading, "model_id", 0) or 0) == 1:
+                return "Keychron K10 HE"
+            return hid_reader.best_device_label()
+        except Exception:
+            return None
+
+    def _update_device_label(self, reading: BatteryReading) -> None:
+        """Refresh the cached tooltip device name when the transport/model changes."""
+        key = (reading.source, reading.transport, getattr(reading, "model_id", 0))
+        with self._lock:
+            if key == self._device_label_key:
+                return
+        label = self._compute_device_label(reading)
+        with self._lock:
+            self._device_label = label
+            self._device_label_key = key
 
     # -- reader callbacks --------------------------------------------------
     def _on_status(self, connected: bool) -> None:
@@ -144,6 +200,8 @@ class TrayApp:
             if not connected:
                 self.smoother.reset()
                 self._displayed_pct = None
+                # Force a re-resolve of the device name on the next reading.
+                self._device_label_key = None
         self._refresh_ui()
 
     def _on_reading(self, reading: BatteryReading) -> None:
@@ -169,6 +227,9 @@ class TrayApp:
             self._connected = True
             if reading.source == "hid":
                 self._last_hid_ts = reading.timestamp
+        # Runs on the producing thread (reader for HID, BLE poller for windows),
+        # and only does real work when the transport/model actually changes.
+        self._update_device_label(reading)
         if self.config.get("battery_logging"):
             battery_log.append(
                 source=reading.source,
@@ -209,6 +270,12 @@ class TrayApp:
 
     # -- ui ----------------------------------------------------------------
     def _refresh_ui(self) -> None:
+        # Serialize the whole render: make_icon (PIL/FreeType) and the tray update
+        # must never run on two threads at once.
+        with self._render_lock:
+            self._refresh_ui_locked()
+
+    def _refresh_ui_locked(self) -> None:
         reading, pct = self._snapshot()
         if reading is None:
             # Stale/absent -> Undetected. Drop the smoother so a later reconnect
@@ -280,6 +347,25 @@ class TrayApp:
                 self._settings_open.clear()
 
         threading.Thread(target=_run, daemon=True, name="SettingsWindow").start()
+
+    def _open_flash_wizard(self, icon=None, item=None) -> None:
+        if self._flash_open.is_set():
+            return
+        self._flash_open.set()
+
+        def _run():
+            try:
+                from .flash_window import open_flash_wizard
+
+                open_flash_wizard(self)
+            except Exception:
+                import traceback
+
+                traceback.print_exc()
+            finally:
+                self._flash_open.clear()
+
+        threading.Thread(target=_run, daemon=True, name="FlashWizard").start()
 
     # -- menu actions ------------------------------------------------------
     def _toggle_autostart(self, icon, item) -> None:
@@ -365,9 +451,47 @@ def _set_app_user_model_id() -> None:
         pass
 
 
+def _install_crash_logging() -> None:
+    """Persist uncaught Python exceptions AND native faults to a consultable log.
+
+    Writes to %APPDATA%\\KeyboardCompanion\\error_log.txt. faulthandler also
+    catches hard crashes (e.g. an access violation from native HID code), which
+    otherwise kill the tray with no trace, by dumping the Python stack at the
+    point of the fault.
+    """
+    try:
+        from .config import config_dir
+
+        log_path = config_dir() / "error_log.txt"
+        fh = open(log_path, "a", buffering=1, encoding="utf-8")  # noqa: SIM115
+        stamp = time.strftime("%Y-%m-%d %H:%M:%S")
+        fh.write(f"\n=== session start {stamp} pid {os.getpid()} ===\n")
+        faulthandler.enable(file=fh)
+
+        def _excepthook(exc_type, exc, tb):
+            ts = time.strftime("%Y-%m-%d %H:%M:%S")
+            fh.write(f"[{ts}] uncaught {exc_type.__name__}: {exc}\n")
+            traceback.print_exception(exc_type, exc, tb, file=fh)
+
+        sys.excepthook = _excepthook
+
+        def _thread_excepthook(args):
+            ts = time.strftime("%Y-%m-%d %H:%M:%S")
+            fh.write(f"[{ts}] uncaught in thread {args.thread.name}: {args.exc_value}\n")
+            traceback.print_exception(
+                args.exc_type, args.exc_value, args.exc_traceback, file=fh
+            )
+
+        threading.excepthook = _thread_excepthook
+    except Exception:
+        # Logging must never prevent the app from starting.
+        pass
+
+
 def main() -> None:
     if not single_instance.try_acquire():
         sys.exit(0)
+    _install_crash_logging()
     _set_app_user_model_id()
     TrayApp().run()
 

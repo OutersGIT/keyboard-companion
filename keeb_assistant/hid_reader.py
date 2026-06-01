@@ -28,6 +28,7 @@ RAW_USAGE_PAGE = 0xFF60     # QMK raw HID
 RAW_USAGE = 0x61
 REPORT_SIZE = 32
 KC_GET_BATTERY = 0xA4
+KC_GET_FIRMWARE_VERSION = 0xA1
 
 # Language-neutral transport labels (brand/standard names, not translated).
 TRANSPORT_NAMES = {1: "USB", 2: "Bluetooth", 4: "2.4 GHz"}
@@ -41,6 +42,8 @@ class BatteryReading:
     transport: int
     timestamp: float
     source: str = "hid"  # "hid" (cable/dongle raw HID) or "windows" (BLE mirror)
+     # Optional model identifier from KC_GET_BATTERY (0 = unspecified/legacy).
+    model_id: int = 0
 
     @property
     def transport_name(self) -> str:
@@ -69,13 +72,49 @@ def _parse_report(resp) -> BatteryReading | None:
     if percentage > 100:
         return None
     voltage = resp[2] | (resp[3] << 8)
+    model_id = resp[6] if len(resp) > 6 else 0
     return BatteryReading(
         percentage=percentage,
         voltage_mv=voltage,
         charging=resp[4],
         transport=resp[5],
         timestamp=time.time(),
+        model_id=model_id,
     )
+
+
+def best_device_label() -> str | None:
+    """Best-effort human-readable device label from HID enumeration.
+
+    Uses manufacturer/product strings from any Keychron raw-HID interface
+    (cable or 2.4 GHz dongle). This is transport-agnostic and does not rely
+    on a specific keyboard model.
+    """
+    if hid is None:
+        return None
+    try:
+        entries = hid.enumerate(VENDOR_ID, 0)
+    except Exception:
+        return None
+    for info in entries:
+        if info.get("usage_page") != RAW_USAGE_PAGE or info.get("usage") != RAW_USAGE:
+            continue
+        product = (info.get("product_string") or "").strip()
+        manufacturer = (info.get("manufacturer_string") or "").strip()
+        pid = info.get("product_id")
+        if product and manufacturer:
+            # Avoid duplicating the vendor when product already includes it,
+            # e.g. "Keychron Link" with manufacturer "Keychron".
+            if product.lower().startswith(manufacturer.lower()):
+                return product
+            return f"{manufacturer} {product}"
+        if product:
+            return product
+        if manufacturer:
+            return manufacturer
+        if pid is not None:
+            return f"Keychron (PID 0x{pid:04X})"
+    return None
 
 
 class HidUnavailableError(RuntimeError):

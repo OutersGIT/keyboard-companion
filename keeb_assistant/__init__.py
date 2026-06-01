@@ -6,6 +6,6 @@ keyboard (cable + 2.4 GHz dongle) using the custom QMK raw-HID battery channel.
 Community project, not affiliated with or endorsed by Keychron.
 """
 
-__version__ = "0.2.2"
+__version__ = "0.3.0"
 APP_NAME = "Keyboard Companion"
 APP_ID = "KeyboardCompanion"

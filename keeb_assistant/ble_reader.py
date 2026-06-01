@@ -32,7 +32,7 @@ _BATTERY_KEY = "{104EA319-6EE2-4701-BD47-8DDBF425BBE5} 2"
 # Bluetooth "is connected" flag (True only while the device is actively connected).
 _CONNECTED_KEY = "{83DA6326-97A6-4088-9453-A1923F573B29} 15"
 
-_PS_SCRIPT = (
+_PS_BATTERY_SCRIPT = (
     "$ErrorActionPreference='SilentlyContinue';"
     f"$bat='{_BATTERY_KEY}';"
     f"$conn='{_CONNECTED_KEY}';"
@@ -44,6 +44,16 @@ _PS_SCRIPT = (
     "  if ($b -ne $null) { Write-Output $b }"
     " }"
     "}"
+)
+
+_PS_NAME_SCRIPT = (
+    "$ErrorActionPreference='SilentlyContinue';"
+    f"$conn='{_CONNECTED_KEY}';"
+    f"Get-PnpDevice -PresentOnly | Where-Object {{ $_.FriendlyName -match '{NAME_PATTERN}' }} | "
+    "ForEach-Object {"
+    " $c = (Get-PnpDeviceProperty -InstanceId $_.InstanceId -KeyName $conn).Data;"
+    " if ($c -eq $true) { Write-Output $_.FriendlyName }"
+    " }"
 )
 
 _CREATE_NO_WINDOW = 0x08000000
@@ -59,7 +69,7 @@ def read_bluetooth_battery() -> int | None:
         return None
     try:
         proc = subprocess.run(
-            ["powershell", "-NoProfile", "-NonInteractive", "-Command", _PS_SCRIPT],
+            ["powershell", "-NoProfile", "-NonInteractive", "-Command", _PS_BATTERY_SCRIPT],
             capture_output=True,
             text=True,
             timeout=8,
@@ -72,4 +82,28 @@ def read_bluetooth_battery() -> int | None:
         value = int(token)
         if 0 <= value <= 100:
             return value
+    return None
+
+
+def read_bluetooth_device_name() -> str | None:
+    """Return the friendly name of a connected BLE keyboard, or None."""
+    if not is_supported():
+        return None
+    try:
+        proc = subprocess.run(
+            ["powershell", "-NoProfile", "-NonInteractive", "-Command", _PS_NAME_SCRIPT],
+            capture_output=True,
+            text=True,
+            timeout=8,
+            creationflags=_CREATE_NO_WINDOW,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+
+    # The script prints one FriendlyName per connected matching node (usually
+    # exactly one, e.g. "Keychron K10 HE"); take the first non-empty line.
+    for line in (proc.stdout or "").splitlines():
+        name = line.strip()
+        if name:
+            return name
     return None
