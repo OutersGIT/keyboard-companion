@@ -1,12 +1,21 @@
 # Keyboard Companion
 
-> **For now: Keychron K10 HE only.**
+> **For now: complete features on the Keychron K10 HE only.** Several features
+> still work on other keyboards (Bluetooth battery, firmware flashing) — see below.
 
-A small, extensible companion app for Keychron keyboards.
+A small, extensible companion app for Keychron keyboards. A Windows **tray** utility
+that, at a glance, lets you:
 
-It ships with a Windows **tray** utility that shows the keyboard's battery level
-(the keyboard must run the modified QMK firmware with the custom raw-HID battery
-channel, command `0xA4`). Battery reading works over **all three connections**:
+- **See your keyboard's model and battery** in the tray (the model + the raw-HID
+  battery over cable/dongle need the modified QMK firmware — see
+  [Requirements](#requirements); the model also shows over Bluetooth from Windows).
+- **Keep an eye on the charge across all three connections** — USB cable, 2.4 GHz
+  dongle and Bluetooth — with an optional **charging-time correction** so the
+  percentage isn't inflated while the keyboard is charging.
+- **Flash firmware** straight from the app — a built-in `dfu-util` wizard that
+  generally works for any QMK/DFU keyboard, not just the K10 HE.
+
+Battery reading works over **all three connections**:
 - **USB cable** — raw-HID pull,
 - **2.4 GHz dongle** — raw-HID push (firmware sends the battery on its own),
 - **Bluetooth** — mirrors the battery level Windows already exposes (BLE Battery
