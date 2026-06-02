@@ -24,7 +24,7 @@ Battery reading works over **all three connections**:
   keyboard never leaves a stale Bluetooth reading on screen.
 
 It can also open the official Keychron launcher and exposes other customizable
-options — and it's designed to grow beyond battery monitoring over time.
+options; and it's designed to grow beyond battery monitoring over time.
 
 > Community project. **Not affiliated with or endorsed by Keychron.** The name
 > refers to it being a companion app for your keyboard.
@@ -87,7 +87,7 @@ Flash firmware (USB connection):
 
 ## Requirements
 - A Keychron K10 HE flashed with QMK firmware modified to report battery over
-  the custom raw-HID channel (command `0xA4`, plus the 2.4 GHz push model) —
+  the custom raw-HID channel (command `0xA4`, plus the 2.4 GHz push model) ->
   see the firmware repo
   **[k10he-battery-firmware](https://github.com/OutersGIT/k10he-battery-firmware)**.
   Without that firmware there is no HID battery data over cable/dongle; the
