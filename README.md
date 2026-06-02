@@ -1,24 +1,24 @@
 # Keyboard Companion
 
 > **For now: complete features on the Keychron K10 HE only.** Several features
-> still work on other keyboards (Bluetooth battery, firmware flashing) — see below.
+> still work on other keyboards (Bluetooth battery, firmware flashing) - see below!
 
 A small, extensible companion app for Keychron keyboards. A Windows **tray** utility
 that, at a glance, lets you:
 
 - **See your keyboard's model and battery** in the tray (the model + the raw-HID
-  battery over cable/dongle need the modified QMK firmware — see
+  battery over cable/dongle need the modified QMK firmware - see
   [Requirements](#requirements); the model also shows over Bluetooth from Windows).
-- **Keep an eye on the charge across all three connections** — USB cable, 2.4 GHz
-  dongle and Bluetooth — with an optional **charging-time correction** so the
+- **Keep an eye on the charge across all three connections** -> USB cable, 2.4 GHz
+  dongle and Bluetooth - with an optional **charging-time correction** so the
   percentage isn't inflated while the keyboard is charging.
-- **Flash firmware** straight from the app — a built-in `dfu-util` wizard that
+- **Flash firmware** straight from the app -> a built-in `dfu-util` wizard that
   generally works for any QMK/DFU keyboard, not just the K10 HE.
 
 Battery reading works over **all three connections**:
-- **USB cable** — raw-HID pull,
-- **2.4 GHz dongle** — raw-HID push (firmware sends the battery on its own),
-- **Bluetooth** — mirrors the battery level Windows already exposes (BLE Battery
+- **USB cable** : raw-HID pull,
+- **2.4 GHz dongle** : raw-HID push (firmware sends the battery on its own),
+- **Bluetooth** : mirrors the battery level Windows already exposes (BLE Battery
   Service), since the vendor raw-HID channel is not available over BT. Shown only
   while the keyboard is **actively connected** (not just paired), so a powered-off
   keyboard never leaves a stale Bluetooth reading on screen.
@@ -102,7 +102,7 @@ page, extract it to a folder you keep (e.g. `C:\Tools\KeyboardCompanion\`),
 then run **`KeyboardCompanion.exe`** inside that folder. The tray icon appears;
 right-click it for the menu (or double-click the icon to open Settings).
 
-Keep the **whole extracted folder** together — do not move or delete the DLLs
+Keep the **whole extracted folder** together: do not move or delete the DLLs
 and other files next to the exe.
 
 > The battery reading over **cable / 2.4 GHz dongle** requires the modified QMK
@@ -110,7 +110,7 @@ and other files next to the exe.
 > out of the box, since it mirrors what Windows already reports.
 
 > **Antivirus / trust.** The Windows build is an **unsigned** [PyInstaller](https://pyinstaller.org/)
-> **onedir** app (a folder with the exe and its runtime files — no single-file
+> **onedir** app (a folder with the exe and its runtime files -> no single-file
 > self-extractor). That layout is much less likely to trip ML heuristics than the
 > old one-file packer style, but a few scanners may still flag unsigned binaries.
 > Since the project is open source you can verify it yourself: scan the zip on
@@ -118,7 +118,7 @@ and other files next to the exe.
 > [build it yourself](#build-for-windows), or
 > [run it from source](#run-from-source).
 
-Devs can run from source or rebuild — see
+Devs can run from source or rebuild -> see
 [Run from source](#run-from-source) and [Build for Windows](#build-for-windows).
 
 ## Run from source
@@ -153,10 +153,10 @@ JSON file at `%APPDATA%\KeyboardCompanion\config.json` (created on first run):
 - `low_battery_threshold` (% below which it notifies)
 - `notify_low_battery` (true/false)
 - `pull_interval_sec` (how often to poll in cable mode)
-- `charge_correction` (true/false — compensate the inflated voltage while charging)
+- `charge_correction` (true/false -> compensate the inflated voltage while charging)
 - `charge_offset_mv` (mV subtracted from the charging voltage before mapping to %;
   empirical, refined from logged data)
-- `battery_logging` (true/false — opt-in CSV diagnostics in `%APPDATA%`)
+- `battery_logging` (true/false -> opt-in CSV diagnostics in `%APPDATA%`)
 
 ## Add a language
 Edit `keeb_assistant/i18n.py`: add a dict to `TRANSLATIONS` and an entry to
