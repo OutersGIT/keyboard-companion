@@ -8,6 +8,7 @@ import sys
 import threading
 import time
 import traceback
+import uuid
 import webbrowser
 
 import pystray
@@ -26,10 +27,14 @@ UI_TICK = 2.0            # seconds between tooltip refreshes
 BLE_POLL = 15.0          # seconds between Windows BLE battery polls (when no HID)
 TRANSPORT_BLUETOOTH = 2
 LAUNCHER_URL = "https://launcher.keychron.com/"
+FULL_CONFIRM_SECONDS = 30.0
+TRAY_ICON_GUID = uuid.uuid5(uuid.NAMESPACE_DNS, f"{APP_ID}.TrayIcon")
+POST_CHARGE_SETTLE_SECONDS = 8.0
 
 
 class TrayApp:
-    def __init__(self):
+    def __init__(self, *, start_in_tray: bool = False):
+        self.start_in_tray = start_in_tray
         self.config = Config.load()
         effective_autostart = autostart.sync_from_config(
             bool(self.config.get("autostart", False))
@@ -54,6 +59,11 @@ class TrayApp:
         self._connected = False
         self._low_notified = False
         self._last_hid_ts = 0.0  # last time a cable/dongle raw-HID reading arrived
+        self._full_candidate_since: float | None = None
+        self._last_battery_voltage_mv: int | None = None
+        self._post_charge_settle_until: float | None = None
+        self._last_icon_key: tuple | None = None
+        self._last_title: str | None = None
         # Cached tooltip device name. Resolving it can do HID enumeration or spawn
         # PowerShell, so it is computed only when the transport/model changes, and
         # only on the thread that produced the reading (which already owns the HID
@@ -117,7 +127,7 @@ class TrayApp:
                 self._toggle_notify,
                 checked=lambda item: bool(self.config["notify_low_battery"]),
             ),
-            MenuItem(lambda item: i18n.t("menu_flash_firmware"), self._open_flash_wizard),
+            MenuItem(lambda item: i18n.t("menu_flash_firmware"), self._open_firmware_tab),
             Menu.SEPARATOR,
             MenuItem(lambda item: i18n.t("menu_quit"), self._quit),
         )
@@ -200,6 +210,8 @@ class TrayApp:
             if not connected:
                 self.smoother.reset()
                 self._displayed_pct = None
+                self._full_candidate_since = None
+                self._post_charge_settle_until = None
                 # Force a re-resolve of the device name on the next reading.
                 self._device_label_key = None
         self._refresh_ui()
@@ -211,16 +223,61 @@ class TrayApp:
         # the smoother fresh so we don't blend two different estimates.
         if prev is not None and prev.source != reading.source:
             self.smoother.reset()
+            self._full_candidate_since = None
+            self._last_battery_voltage_mv = None
+            self._post_charge_settle_until = None
+        if (
+            prev is not None
+            and prev.charging_code == battery_model.CHARGING_ACTIVE
+            and reading.charging_code == battery_model.CHARGING_NONE
+        ):
+            self._post_charge_settle_until = reading.timestamp + POST_CHARGE_SETTLE_SECONDS
         # Charging compensation is applied to the value we *display* only; the
         # raw voltage/percentage are still logged below as ground truth.
+        correction_enabled = bool(self.config.get("charge_correction", True))
+        if reading.charging_code == battery_model.CHARGING_ACTIVE:
+            correction_enabled = correction_enabled and battery_model.charging_voltage_is_inflated(
+                reading.voltage_mv,
+                self._last_battery_voltage_mv,
+            )
         corrected = battery_model.corrected_percentage(
             reading.voltage_mv,
             reading.percentage,
             reading.charging_code,
-            enabled=bool(self.config.get("charge_correction", True)),
+            enabled=correction_enabled,
             offset_mv=int(self.config.get("charge_offset_mv", battery_model.DEFAULT_CHARGE_OFFSET_MV)),
         )
-        displayed = self.smoother.update(corrected, charging=reading.is_charging)
+        post_charge_inflated = (
+            reading.charging_code == battery_model.CHARGING_NONE
+            and self._post_charge_settle_until is not None
+            and reading.timestamp <= self._post_charge_settle_until
+            and reading.voltage_mv >= battery_model.FULL_VOLTAGE_MV
+            and reading.percentage >= battery_model.FULL_GUARD_MIN_RAW_PCT
+        )
+        if post_charge_inflated and self._displayed_pct is not None:
+            corrected = self._displayed_pct
+        if battery_model.is_full_charge_candidate(
+            reading.voltage_mv,
+            reading.percentage,
+            reading.charging_code,
+        ):
+            if self._full_candidate_since is None:
+                self._full_candidate_since = reading.timestamp
+            if reading.timestamp - self._full_candidate_since >= FULL_CONFIRM_SECONDS:
+                corrected = 100
+        else:
+            self._full_candidate_since = None
+        smoothing_charging = (
+            reading.charging_code == battery_model.CHARGING_ACTIVE
+            or (corrected >= 100 and not post_charge_inflated)
+        )
+        displayed = self.smoother.update(corrected, charging=smoothing_charging)
+        if (
+            reading.charging_code == battery_model.CHARGING_NONE
+            and reading.voltage_mv > 0
+            and not post_charge_inflated
+        ):
+            self._last_battery_voltage_mv = reading.voltage_mv
         with self._lock:
             self._latest = reading
             self._displayed_pct = displayed
@@ -284,14 +341,22 @@ class TrayApp:
                 if self._displayed_pct is not None:
                     self.smoother.reset()
                     self._displayed_pct = None
-            icon_img = make_icon(None, connected=False)
+            icon_key = (None, False, False)
         else:
-            icon_img = make_icon(pct, charging=reading.is_charging, connected=True)
-        # Icon image + tooltip are cheap to set and don't disturb an open menu.
-        # The menu carries no live values, so it is never rebuilt from here.
+            icon_key = (pct, reading.is_charging, True)
+        title = self._tooltip_text()
+
+        # On Windows, assigning icon.icon makes pystray serialize the PIL image
+        # into an ICO through native encoders. Doing that every UI tick caused
+        # rare native crashes, so only touch the icon when the rendered state
+        # actually changed. The title is also skipped when identical.
         try:
-            self.icon.icon = icon_img
-            self.icon.title = self._tooltip_text()
+            if icon_key != self._last_icon_key:
+                self.icon.icon = make_icon(icon_key[0], charging=icon_key[1], connected=icon_key[2])
+                self._last_icon_key = icon_key
+            if title != self._last_title:
+                self.icon.title = title
+                self._last_title = title
         except Exception:
             pass
 
@@ -332,21 +397,28 @@ class TrayApp:
         self.config.save()
         self._refresh_ui()
 
-    def _open_settings(self, icon=None, item=None) -> None:
+    def _open_main_window(self, initial_tab: str = "settings") -> None:
         if self._settings_open.is_set():
             return
 
         def _run():
             self._settings_open.set()
             try:
-                from .settings_window import open_settings
-                open_settings(self)
+                from .main_window import open_main_window
+
+                open_main_window(self, initial_tab=initial_tab)
             except Exception:
                 pass
             finally:
                 self._settings_open.clear()
 
-        threading.Thread(target=_run, daemon=True, name="SettingsWindow").start()
+        threading.Thread(target=_run, daemon=True, name="MainWindow").start()
+
+    def _open_settings(self, icon=None, item=None) -> None:
+        self._open_main_window("settings")
+
+    def _open_firmware_tab(self, icon=None, item=None) -> None:
+        self._open_main_window("firmware")
 
     def _open_flash_wizard(self, icon=None, item=None) -> None:
         if self._flash_open.is_set():
@@ -417,7 +489,7 @@ class TrayApp:
 
             def _on_notify(wparam, lparam):
                 if lparam == WM_LBUTTONDBLCLK:
-                    self._open_settings()
+                    self._open_main_window("device")
                     return None
                 return base(wparam, lparam)
 
@@ -431,6 +503,10 @@ class TrayApp:
         self.reader.start()
         threading.Thread(target=self._ui_ticker, daemon=True, name="UiTicker").start()
         threading.Thread(target=self._ble_poller, daemon=True, name="BlePoller").start()
+        # A normal double-click on the exe should reveal the app, not only leave
+        # a resident tray icon behind. The tray still remains the always-on agent.
+        if not self.start_in_tray:
+            self._open_main_window("device")
 
     def run(self) -> None:
         self.icon.run(setup=self._setup)
@@ -448,6 +524,49 @@ def _set_app_user_model_id() -> None:
             f"{APP_ID}.Tray"
         )
     except Exception:
+        pass
+
+
+def _patch_pystray_stable_icon_guid() -> None:
+    """Make Windows track this tray icon by a stable GUID, not by exe path.
+
+    Windows' "Other system tray icons" list can create a fresh entry whenever a
+    PyInstaller build is launched from a new folder/path. pystray's Win32 backend
+    identifies icons with a runtime uID, so we add NIF_GUID to every
+    Shell_NotifyIcon call. The GUID is deterministic from APP_ID and stable
+    across builds.
+    """
+    if not sys.platform.startswith("win"):
+        return
+    try:
+        import ctypes
+        import pystray._win32 as pystray_win32
+        from pystray._util import win32
+
+        if getattr(pystray_win32.Icon, "_keyboard_companion_guid_patch", False):
+            return
+
+        guid = win32.NOTIFYICONDATAW.GUID()
+        raw = TRAY_ICON_GUID.bytes_le
+        guid.Data1 = int.from_bytes(raw[0:4], "little")
+        guid.Data2 = int.from_bytes(raw[4:6], "little")
+        guid.Data3 = int.from_bytes(raw[6:8], "little")
+        guid.Data4[:] = raw[8:16]
+
+        def _message(self, code, flags, **kwargs):
+            win32.Shell_NotifyIcon(code, win32.NOTIFYICONDATAW(
+                cbSize=ctypes.sizeof(win32.NOTIFYICONDATAW),
+                hWnd=self._hwnd,
+                uID=id(self),
+                uFlags=flags | win32.NIF_GUID,
+                guidItem=guid,
+                **kwargs))
+
+        pystray_win32.Icon._message = _message
+        pystray_win32.Icon._keyboard_companion_guid_patch = True
+    except Exception:
+        # A failed patch must not prevent the tray from starting; AppUserModelID
+        # still provides the best available fallback.
         pass
 
 
@@ -488,12 +607,18 @@ def _install_crash_logging() -> None:
         pass
 
 
+def _should_start_in_tray() -> bool:
+    tray_args = {"--start-in-tray", "--tray", "--minimized"}
+    return any(arg in tray_args for arg in sys.argv[1:])
+
+
 def main() -> None:
     if not single_instance.try_acquire():
         sys.exit(0)
     _install_crash_logging()
     _set_app_user_model_id()
-    TrayApp().run()
+    _patch_pystray_stable_icon_guid()
+    TrayApp(start_in_tray=_should_start_in_tray()).run()
 
 
 if __name__ == "__main__":

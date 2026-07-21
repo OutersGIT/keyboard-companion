@@ -25,13 +25,14 @@ def _is_windows() -> bool:
 
 def _launch_command() -> str:
     """Command Windows should run at logon."""
+    start_in_tray_arg = " --start-in-tray"
     if getattr(sys, "frozen", False):
         # Packaged exe (onedir): run the exe inside its install folder.
-        return f'"{sys.executable}"'
+        return f'"{sys.executable}"{start_in_tray_arg}'
     # Dev mode: run with pythonw (no console window) -m keeb_assistant
     pythonw = Path(sys.executable).with_name("pythonw.exe")
     runner = pythonw if pythonw.exists() else Path(sys.executable)
-    return f'"{runner}" -m keeb_assistant'
+    return f'"{runner}" -m keeb_assistant{start_in_tray_arg}'
 
 
 def _normalize_command(command: str) -> str:

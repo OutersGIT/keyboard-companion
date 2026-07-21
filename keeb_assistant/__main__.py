@@ -2,6 +2,7 @@
 
 Supports a small CLI for quick checks in addition to the tray app:
   python -m keeb_assistant            -> launch the tray app
+  python -m keeb_assistant --start-in-tray -> launch without opening the GUI
   python -m keeb_assistant --once     -> print one reading and exit
 """
 

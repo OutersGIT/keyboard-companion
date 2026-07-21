@@ -8,24 +8,15 @@ bundled with CPython).
 from __future__ import annotations
 
 import tkinter as tk
-from tkinter import ttk
+from tkinter import messagebox, ttk
 
-from . import APP_NAME, __version__, autostart, battery_log, i18n
+from . import APP_NAME, __version__, autostart, battery_log, i18n, tray_registry
 
 
-def open_settings(app) -> None:
+def build_settings_panel(parent, app, *, on_close=None, title_callback=None):
     cfg = app.config
 
-    root = tk.Tk()
-    root.title(APP_NAME)
-    root.resizable(False, False)
-    try:
-        root.attributes("-topmost", True)
-    except tk.TclError:
-        pass
-
-    frame = ttk.Frame(root, padding=16)
-    frame.grid(row=0, column=0, sticky="nsew")
+    frame = ttk.Frame(parent, padding=16)
 
     lang_codes = [code for code, _ in i18n.available_languages()]
     lang_labels = [label for _, label in i18n.available_languages()]
@@ -47,13 +38,18 @@ def open_settings(app) -> None:
     chk_correction = ttk.Checkbutton(frame, variable=correction_var)
     chk_logging = ttk.Checkbutton(frame, variable=logging_var)
     btn_open_log = ttk.Button(frame, command=battery_log.open_location)
+    tray_tools_sep = ttk.Separator(frame, orient="horizontal")
+    lbl_tray_tools = ttk.Label(frame, foreground="#666", wraplength=320)
+    btn_clean_tray = ttk.Button(frame)
+    btn_promote_tray = ttk.Button(frame)
     lbl_note = ttk.Label(frame, foreground="#666", wraplength=320)
     lbl_version = ttk.Label(frame, foreground="#888", text=f"{APP_NAME}  v{__version__}")
     btn_save = ttk.Button(frame)
     btn_close = ttk.Button(frame)
 
     def retranslate() -> None:
-        root.title(APP_NAME)
+        if title_callback:
+            title_callback(APP_NAME)
         lbl_language.config(text=i18n.t("settings_language"))
         lbl_threshold.config(text=i18n.t("settings_threshold"))
         chk_notify.config(text=i18n.t("settings_notify"))
@@ -62,6 +58,9 @@ def open_settings(app) -> None:
         chk_correction.config(text=i18n.t("settings_charge_correction"))
         chk_logging.config(text=i18n.t("settings_logging"))
         btn_open_log.config(text=i18n.t("settings_open_log"))
+        lbl_tray_tools.config(text=i18n.t("settings_tray_tools"))
+        btn_clean_tray.config(text=i18n.t("settings_clean_tray_records"))
+        btn_promote_tray.config(text=i18n.t("settings_promote_tray_icon"))
         lbl_note.config(text=i18n.t("settings_note"))
         btn_save.config(text=i18n.t("settings_save"))
         btn_close.config(text=i18n.t("settings_close"))
@@ -93,10 +92,25 @@ def open_settings(app) -> None:
         cfg["charge_correction"] = bool(correction_var.get())
         cfg["battery_logging"] = bool(logging_var.get())
         app.apply_settings()
-        root.destroy()
+        (on_close or frame.winfo_toplevel().destroy)()
+
+    def on_clean_tray_records() -> None:
+        deleted = tray_registry.cleanup_old_records()
+        messagebox.showinfo(
+            APP_NAME,
+            i18n.t("settings_clean_tray_done", count=deleted),
+            parent=frame.winfo_toplevel(),
+        )
+
+    def on_promote_tray_icon() -> None:
+        ok = tray_registry.promote_current_icon()
+        key = "settings_promote_tray_done" if ok else "settings_promote_tray_failed"
+        messagebox.showinfo(APP_NAME, i18n.t(key), parent=frame.winfo_toplevel())
 
     btn_save.config(command=on_save)
-    btn_close.config(command=root.destroy)
+    btn_close.config(command=on_close or frame.winfo_toplevel().destroy)
+    btn_clean_tray.config(command=on_clean_tray_records)
+    btn_promote_tray.config(command=on_promote_tray_icon)
 
     # Layout.
     lbl_language.grid(row=0, column=0, sticky="w", pady=4)
@@ -110,12 +124,31 @@ def open_settings(app) -> None:
     chk_correction.grid(row=5, column=0, columnspan=2, sticky="w", pady=4)
     chk_logging.grid(row=6, column=0, sticky="w", pady=4)
     btn_open_log.grid(row=6, column=1, sticky="e", pady=4)
-    lbl_note.grid(row=7, column=0, columnspan=2, sticky="w", pady=(10, 8))
-    btn_save.grid(row=8, column=0, sticky="w", pady=(4, 0))
-    btn_close.grid(row=8, column=1, sticky="e", pady=(4, 0))
-    lbl_version.grid(row=9, column=0, columnspan=2, sticky="w", pady=(12, 0))
+    tray_tools_sep.grid(row=7, column=0, columnspan=2, sticky="ew", pady=(10, 8))
+    lbl_tray_tools.grid(row=8, column=0, columnspan=2, sticky="w", pady=(0, 4))
+    btn_clean_tray.grid(row=9, column=0, columnspan=2, sticky="ew", pady=3)
+    btn_promote_tray.grid(row=10, column=0, columnspan=2, sticky="ew", pady=3)
+    lbl_note.grid(row=11, column=0, columnspan=2, sticky="w", pady=(10, 8))
+    btn_save.grid(row=12, column=0, sticky="w", pady=(4, 0))
+    btn_close.grid(row=12, column=1, sticky="e", pady=(4, 0))
+    lbl_version.grid(row=13, column=0, columnspan=2, sticky="w", pady=(12, 0))
 
     retranslate()
+    frame.retranslate = retranslate  # type: ignore[attr-defined]
+    return frame
+
+
+def open_settings(app) -> None:
+    root = tk.Tk()
+    root.title(APP_NAME)
+    root.resizable(False, False)
+    try:
+        root.attributes("-topmost", True)
+    except tk.TclError:
+        pass
+
+    frame = build_settings_panel(root, app, on_close=root.destroy, title_callback=root.title)
+    frame.grid(row=0, column=0, sticky="nsew")
 
     root.update_idletasks()
     root.mainloop()

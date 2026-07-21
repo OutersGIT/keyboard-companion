@@ -1,7 +1,7 @@
 # Build Keyboard Companion as a PyInstaller onedir folder (+ optional zip).
 #
 # Usage (PowerShell, from this folder):
-#   .\build_exe.ps1            # build dist\KeyboardCompanion\ + zip
+#   .\build_exe.ps1            # dist\KeyboardCompanion\ + dist\KeyboardCompanion-v<ver>-win64.zip
 #   .\build_exe.ps1 -Clean     # remove previous build artifacts first
 #
 param([switch]$Clean)
@@ -17,9 +17,18 @@ if (-not (Test-Path $PythonExe)) {
     $PythonExe = "python"
 }
 
+$InitPy = Join-Path $PSScriptRoot "keeb_assistant\__init__.py"
+if (-not (Test-Path $InitPy)) {
+    Write-Error "Missing $InitPy (cannot read __version__ for the zip name)."
+}
+$Version = (Select-String -Path $InitPy -Pattern '^\s*__version__\s*=\s*"([^"]+)"').Matches.Groups[1].Value
+if (-not $Version) {
+    Write-Error "Could not parse __version__ from $InitPy"
+}
+
 $AppDir = "dist\KeyboardCompanion"
 $AppExe = "$AppDir\KeyboardCompanion.exe"
-$ZipPath = "dist\KeyboardCompanion-win64.zip"
+$ZipPath = "dist\KeyboardCompanion-v$Version-win64.zip"
 
 if ($Clean) {
     Remove-Item -Recurse -Force build, dist -ErrorAction SilentlyContinue
