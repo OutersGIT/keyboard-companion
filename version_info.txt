@@ -18,12 +18,12 @@ VSVersionInfo(
         [
           StringStruct('CompanyName', 'Community (unofficial)'),
           StringStruct('FileDescription', 'Keyboard Companion'),
-          StringStruct('FileVersion', '1.0.1'),
+          StringStruct('FileVersion', '1.0.2'),
           StringStruct('InternalName', 'KeyboardCompanion'),
           StringStruct('LegalCopyright', 'Community project. Not affiliated with Keychron.'),
           StringStruct('OriginalFilename', 'KeyboardCompanion.exe'),
           StringStruct('ProductName', 'Keyboard Companion'),
-          StringStruct('ProductVersion', '1.0.1'),
+          StringStruct('ProductVersion', '1.0.2'),
         ],
       )
     ]),

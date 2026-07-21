@@ -154,9 +154,19 @@ def _build_firmware_tab(parent, app):
     btn = ttk.Button(
         frame,
         text=i18n.t("firmware_tab_open_wizard"),
-        command=app._open_flash_wizard,
+        command=lambda: _open_flash_wizard_from_main(frame, app),
     )
     title.grid(row=0, column=0, sticky="w")
     body.grid(row=1, column=0, sticky="w", pady=(8, 12))
     btn.grid(row=2, column=0, sticky="w")
     return frame
+
+
+def _open_flash_wizard_from_main(frame, app) -> None:
+    # Tk on Windows is fragile with multiple Tk roots in different threads.
+    # Close the main window before launching the dedicated flash wizard.
+    try:
+        frame.winfo_toplevel().destroy()
+    except tk.TclError:
+        pass
+    app._open_flash_wizard()
