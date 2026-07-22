@@ -186,8 +186,9 @@ class TrayApp:
             if reading.transport == firmware_flash.TRANSPORT_USB:
                 # Enumeration-only (no device open) → safe on the reader thread.
                 return firmware_flash.cable_model_label()
-            if (getattr(reading, "model_id", 0) or 0) == 1:
-                return "Keychron K10 HE"
+            model_name = hid_reader.MODEL_NAMES.get(getattr(reading, "model_id", 0) or 0)
+            if model_name:
+                return model_name
             return hid_reader.best_device_label()
         except Exception:
             return None

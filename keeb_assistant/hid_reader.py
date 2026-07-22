@@ -32,6 +32,10 @@ KC_GET_FIRMWARE_VERSION = 0xA1
 
 # Language-neutral transport labels (brand/standard names, not translated).
 TRANSPORT_NAMES = {1: "USB", 2: "Bluetooth", 4: "2.4 GHz"}
+MODEL_NAMES = {
+    1: "Keychron K10 HE",
+    2: "Keychron Q1 HE",
+}
 
 
 @dataclass(frozen=True)
