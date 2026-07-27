@@ -1,6 +1,6 @@
 # Keyboard Companion
 
-> **For now: complete features on the Keychron K10 HE only.** Several features
+> **For now: complete features on the Keychron K10 HE and Q1 HE only.** Several features
 > still work on other keyboards (Bluetooth battery, firmware flashing) - see below!
 
 A small, extensible companion app for Keychron keyboards. A Windows **tray** utility
@@ -12,8 +12,8 @@ that, at a glance, lets you:
 - **Keep an eye on the charge across all three connections** -> USB cable, 2.4 GHz
   dongle and Bluetooth - with an optional **charging-time correction** so the
   percentage isn't inflated while the keyboard is charging.
-- **Flash firmware** straight from the app -> a built-in `dfu-util` wizard that
-  generally works for any QMK/DFU keyboard, not just the K10 HE.
+- **Flash firmware** straight from the app -> a built-in "_dfu-util_" wizard that
+  generally works for any QMK/DFU keyboard, not just the K10 HE or Q1 HE.
 
 Battery reading works over **all three connections**:
 - **USB cable** : raw-HID pull,
@@ -99,10 +99,10 @@ Flash firmware (USB connection):
 - Auto-reconnect when switching cable ⇄ dongle or powering the keyboard back on.
 
 ## Requirements
-- A Keychron K10 HE flashed with QMK firmware modified to report battery over
+- A Keychron K10 HE or Q1 HE flashed with QMK firmware modified to report battery over
   the custom raw-HID channel (command `0xA4`, plus the 2.4 GHz push model) ->
   see the firmware repo
-  **[k10he-battery-firmware](https://github.com/OutersGIT/k10he-battery-firmware)**.
+  **[k10he-battery-firmware](https://github.com/OutersGIT/k10he-battery-firmware)** - **[q1he-battery-firmware](https://github.com/OutersGIT/q1he-battery-firmware)**.
   Without that firmware there is no HID battery data over cable/dongle; the
   Bluetooth reading still works, since it mirrors what Windows already exposes.
 - Python 3.9+ (only to run from source or to build the exe).
