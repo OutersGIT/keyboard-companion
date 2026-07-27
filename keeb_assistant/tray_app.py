@@ -72,6 +72,9 @@ class TrayApp:
         self._device_label: str | None = None
         self._device_label_key: tuple | None = None
         self._stop = threading.Event()
+        self._exit_lock = threading.Lock()
+        self._exit_requested = False
+        self._shutdown_fast = False
         self._settings_open = threading.Event()
         self._flash_open = threading.Event()
 
@@ -183,12 +186,12 @@ class TrayApp:
         try:
             if reading.source == "windows":
                 return ble_reader.read_bluetooth_device_name()
-            if reading.transport == firmware_flash.TRANSPORT_USB:
-                # Enumeration-only (no device open) → safe on the reader thread.
-                return firmware_flash.cable_model_label()
             model_name = hid_reader.MODEL_NAMES.get(getattr(reading, "model_id", 0) or 0)
             if model_name:
                 return model_name
+            if reading.transport == firmware_flash.TRANSPORT_USB:
+                # Enumeration-only (no device open) → safe on the reader thread.
+                return firmware_flash.cable_model_label()
             return hid_reader.best_device_label()
         except Exception:
             return None
@@ -206,6 +209,8 @@ class TrayApp:
 
     # -- reader callbacks --------------------------------------------------
     def _on_status(self, connected: bool) -> None:
+        if self._stop.is_set():
+            return
         with self._lock:
             self._connected = connected
             if not connected:
@@ -218,6 +223,8 @@ class TrayApp:
         self._refresh_ui()
 
     def _on_reading(self, reading: BatteryReading) -> None:
+        if self._stop.is_set():
+            return
         with self._lock:
             prev = self._latest
         # Switching source (HID cable/dongle <-> Windows BLE) can be a jump; start
@@ -287,8 +294,9 @@ class TrayApp:
                 self._last_hid_ts = reading.timestamp
         # Runs on the producing thread (reader for HID, BLE poller for windows),
         # and only does real work when the transport/model actually changes.
-        self._update_device_label(reading)
-        if self.config.get("battery_logging"):
+        if not self._shutdown_fast:
+            self._update_device_label(reading)
+        if self.config.get("battery_logging") and not self._shutdown_fast:
             battery_log.append(
                 source=reading.source,
                 transport=reading.transport_name,
@@ -298,6 +306,8 @@ class TrayApp:
                 displayed_pct=displayed,
                 ema=self.smoother.ema,
             )
+        if self._stop.is_set():
+            return
         self._check_low_battery(displayed, reading.is_charging)
         self._refresh_ui()
 
@@ -328,6 +338,8 @@ class TrayApp:
 
     # -- ui ----------------------------------------------------------------
     def _refresh_ui(self) -> None:
+        if self._stop.is_set() and self._shutdown_fast:
+            return
         # Serialize the whole render: make_icon (PIL/FreeType) and the tray update
         # must never run on two threads at once.
         with self._render_lock:
@@ -399,6 +411,8 @@ class TrayApp:
         self._refresh_ui()
 
     def _open_main_window(self, initial_tab: str = "settings") -> None:
+        if self._stop.is_set():
+            return
         if self._settings_open.is_set():
             return
 
@@ -422,6 +436,8 @@ class TrayApp:
         self._open_main_window("firmware")
 
     def _open_flash_wizard(self, icon=None, item=None) -> None:
+        if self._stop.is_set():
+            return
         if self._flash_open.is_set():
             return
         self._flash_open.set()
@@ -460,17 +476,90 @@ class TrayApp:
             pass
 
     def _open_launcher(self, icon=None, item=None) -> None:
+        if self._stop.is_set():
+            return
         try:
             webbrowser.open(LAUNCHER_URL)
         except Exception:
             pass
 
     def _quit(self, icon, item) -> None:
+        self.request_exit(reason="user", icon=icon)
+
+    def request_exit(self, *, reason: str, fast: bool = False, icon=None) -> None:
+        with self._exit_lock:
+            if self._exit_requested:
+                return
+            self._exit_requested = True
+            self._shutdown_fast = bool(fast)
+        self._shutdown_log(f"exit requested: {reason} fast={fast}")
         self._stop.set()
-        self.reader.stop()
-        icon.stop()
+        try:
+            self.reader.stop()
+        except Exception:
+            pass
+        if fast:
+            self._force_process_exit_later(1.5)
+        try:
+            (icon or self.icon).stop()
+        except Exception as exc:
+            self._shutdown_log(f"tray stop failed: {exc!r}")
+
+    def _force_process_exit_later(self, delay_sec: float) -> None:
+        def _exit_after_delay() -> None:
+            time.sleep(delay_sec)
+            self._shutdown_log("forcing process exit after shutdown grace period")
+            try:
+                if sys.platform.startswith("win"):
+                    import ctypes
+
+                    ctypes.windll.kernel32.ExitProcess(0)
+                os._exit(0)
+            except Exception:
+                os._exit(0)
+
+        threading.Thread(target=_exit_after_delay, daemon=True, name="ShutdownExit").start()
+
+    def _shutdown_log(self, message: str) -> None:
+        try:
+            from .config import config_dir
+
+            stamp = time.strftime("%Y-%m-%d %H:%M:%S")
+            path = config_dir() / "shutdown_log.txt"
+            with open(path, "a", encoding="utf-8") as fh:
+                fh.write(f"[{stamp}] {message}\n")
+        except Exception:
+            pass
 
     # -- lifecycle ---------------------------------------------------------
+    def _install_windows_session_handlers(self) -> None:
+        if not sys.platform.startswith("win"):
+            return
+        try:
+            WM_QUERYENDSESSION = 0x0011
+            WM_ENDSESSION = 0x0016
+
+            def _on_query_end_session(wparam, lparam):
+                self._shutdown_log("shutdown requested: WM_QUERYENDSESSION")
+                return 1
+
+            def _on_end_session(wparam, lparam):
+                self._shutdown_log(f"shutdown confirmed: WM_ENDSESSION wParam={wparam}")
+                if int(wparam):
+                    threading.Thread(
+                        target=lambda: self.request_exit(
+                            reason="windows_shutdown", fast=True, icon=self.icon
+                        ),
+                        daemon=True,
+                        name="WindowsShutdown",
+                    ).start()
+                return 0
+
+            self.icon._message_handlers[WM_QUERYENDSESSION] = _on_query_end_session
+            self.icon._message_handlers[WM_ENDSESSION] = _on_end_session
+        except Exception as exc:
+            self._shutdown_log(f"failed to install shutdown handlers: {exc!r}")
+
     def _install_doubleclick_handler(self) -> None:
         """Open Settings on a tray double-click.
 
@@ -501,6 +590,7 @@ class TrayApp:
     def _setup(self, icon) -> None:
         icon.visible = True
         self._install_doubleclick_handler()
+        self._install_windows_session_handlers()
         self.reader.start()
         threading.Thread(target=self._ui_ticker, daemon=True, name="UiTicker").start()
         threading.Thread(target=self._ble_poller, daemon=True, name="BlePoller").start()

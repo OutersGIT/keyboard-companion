@@ -8,6 +8,7 @@ import subprocess
 import sys
 import time
 from collections.abc import Callable
+from dataclasses import dataclass
 from pathlib import Path
 
 try:
@@ -28,15 +29,23 @@ from .hid_reader import (
 
 FlashProgressCallback = Callable[[str, str | None, int | None], None]
 
-# Keychron K10 HE direct USB (Cable) — not the 2.4 GHz dongle (0xD030).
-CABLE_KEYBOARD_PIDS = frozenset({0x0EA0, 0x0EA1})
-# USB PID layout IDs — must match keyboards/keychron/k10_he/{iso,ansi}/keyboard.json.
+@dataclass(frozen=True)
+class CableKeyboard:
+    model: str
+    layout: str
+
+
+# Supported Keychron HE direct USB (Cable) PIDs, not the 2.4 GHz dongle (0xD030).
+# These IDs must match the keyboard.json for each layout in the flashed firmware.
 # This is whatever the *flashed firmware* advertises, not read from the keycaps.
-CABLE_USB_LAYOUT: dict[int, str] = {
-    0x0EA0: "ANSI",
-    0x0EA1: "ISO",
+CABLE_KEYBOARDS: dict[int, CableKeyboard] = {
+    0x0EA0: CableKeyboard("Keychron K10 HE", "ANSI"),
+    0x0EA1: CableKeyboard("Keychron K10 HE", "ISO"),
+    0x0B10: CableKeyboard("Keychron Q1 HE", "ANSI Knob"),
+    0x0B11: CableKeyboard("Keychron Q1 HE", "ISO Knob"),
+    0x0B12: CableKeyboard("Keychron Q1 HE", "JIS Knob"),
 }
-K10HE_MODEL_NAME = "Keychron K10 HE"
+CABLE_KEYBOARD_PIDS = frozenset(CABLE_KEYBOARDS)
 TRANSPORT_USB = 1
 
 DFU_USB_ID = "0483:df11"
@@ -104,7 +113,7 @@ def cable_hid_paths() -> list[bytes]:
 
 
 def is_cable_keyboard_connected(*, verify_transport: bool = True) -> bool:
-    """True when the K10 HE is on USB Cable (keyboard PID, not dongle)."""
+    """True when a supported Keychron HE is on USB Cable (keyboard PID, not dongle)."""
     paths = cable_hid_paths()
     if not paths:
         return False
@@ -162,7 +171,7 @@ def read_firmware_version() -> str | None:
 
 
 def cable_device_info() -> tuple[str | None, str | None, int | None, str | None]:
-    """Return (model, usb_layout, pid, firmware version) for cable-connected K10 HE."""
+    """Return (model, usb_layout, pid, firmware version) for a cable-connected keyboard."""
     for info in _hid_entries():
         if info.get("usage_page") != RAW_USAGE_PAGE or info.get("usage") != RAW_USAGE:
             continue
@@ -170,8 +179,9 @@ def cable_device_info() -> tuple[str | None, str | None, int | None, str | None]
         if pid not in CABLE_KEYBOARD_PIDS:
             continue
         path = info.get("path")
-        layout = CABLE_USB_LAYOUT.get(pid)
-        model = K10HE_MODEL_NAME if layout else None
+        keyboard = CABLE_KEYBOARDS.get(pid)
+        layout = keyboard.layout if keyboard else None
+        model = keyboard.model if keyboard else None
         if model is None:
             product = (info.get("product_string") or "").strip()
             manufacturer = (info.get("manufacturer_string") or "").strip()
@@ -199,8 +209,9 @@ def cable_model_label() -> str | None:
         pid = info.get("product_id")
         if pid not in CABLE_KEYBOARD_PIDS:
             continue
-        if CABLE_USB_LAYOUT.get(pid):
-            return K10HE_MODEL_NAME
+        keyboard = CABLE_KEYBOARDS.get(pid)
+        if keyboard:
+            return keyboard.model
         product = (info.get("product_string") or "").strip()
         manufacturer = (info.get("manufacturer_string") or "").strip()
         if product and manufacturer:
