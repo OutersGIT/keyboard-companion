@@ -198,7 +198,7 @@ class BatteryReader(threading.Thread):
         self._set_connected(bool(self._devices))
 
     def _send_pull(self) -> None:
-        report = bytes([0x00, KC_GET_BATTERY] + [0x00] * REPORT_SIZE)
+        report = bytes([0x00, KC_GET_BATTERY]) + bytes(REPORT_SIZE - 1)
         for path, dev in list(self._devices.items()):
             try:
                 dev.write(report)

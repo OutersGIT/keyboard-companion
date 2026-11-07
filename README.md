@@ -107,6 +107,42 @@ Flash firmware (USB connection):
   Bluetooth reading still works, since it mirrors what Windows already exposes.
 - Python 3.9+ (only to run from source or to build the exe).
 
+## Experimental K2 HE validation and Linux diagnostic
+
+The custom A4 protocol has also been tested on a **K2 HE ANSI** (`3434:0e20`)
+with a port of the firmware changes and a **Link-KM** receiver (`3434:d026`,
+firmware 0.1.1). See the [K2 HE source patch, build/flash/recovery instructions,
+and hardware results](https://github.com/nwadams/keychron-vitals/blob/main/research/KEYBOARD.md).
+Stock K2 HE firmware does not provide this custom getter. Do not flash K10 HE
+or Q1 HE binaries onto a K2 HE. Model id 0 remains unspecified; no new model id
+is allocated by this contribution.
+
+A dependency-free Linux console diagnostic is included:
+
+```sh
+python3 tools/linux_battery.py --seconds 12         # listen to dongle push reports
+python3 tools/linux_battery.py --pull --seconds 12  # also send the custom A4 getter
+```
+
+It opens Keychron vendor raw-HID collections (`FF60/61`) and prints JSON battery
+reports. It does not read keyboard keystrokes, flash firmware, or change device
+configuration. Python 3 and permission to open the specific hidraw interface
+are required; neither the tray app nor hidapi is needed. The command returns
+status 1 if no report arrives. It is a bounded diagnostic, not a background
+service or a port of the Windows tray/Bluetooth functionality.
+
+Hardware results: receiver pushes about every two seconds, 84–85% / 3987–3992
+mV / discharging; USB 99% / 4098 mV / charging. Typing and Fn+B LEDs were checked.
+The keyboard percentage is voltage-derived, so charging inflates it. Startup
+reports can contain the firmware's 4100 mV default; allow sampling to settle.
+Long-term sleep/wake and the Windows tray app were not tested on this K2 HE.
+
+Protocol/request tests run without hardware or third-party packages:
+
+```sh
+python3 -m unittest discover -s tests -v
+```
+
 ## Download (Windows)
 
 Grab the latest versioned **`KeyboardCompanion-vX.Y.Z-win64.zip`** from the
